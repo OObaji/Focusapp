@@ -186,7 +186,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                     <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.7s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Daily Tasks</h2>
+                        <h2 id="daily-tasks-title" class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Daily Tasks</h2>
                         <div class="add-task-form mb-4"><input type="text" id="daily-task-input" placeholder="Add a new daily task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-daily-task-btn" class="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="daily-task-list" class="space-y-3"></ul>
                     </div>
@@ -196,7 +196,7 @@
                         <ul id="weekly-task-list" class="space-y-3"></ul>
                     </div>
                     <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks</h2>
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks - July</h2>
                         <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="monthly-task-list" class="space-y-3"></ul>
                     </div>
@@ -445,6 +445,12 @@
             if (user) {
                 userId = user.uid;
                 userIdDisplay.textContent = `User ID: ${userId}`;
+                
+                const dailyTasksTitle = document.getElementById('daily-tasks-title');
+                const today = new Date();
+                const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
+                dailyTasksTitle.textContent = `Daily Tasks - ${dayOfWeek}`;
+
                 await handleTaskResets();
                 loadDashboardData();
                 loadGoals();
@@ -572,7 +578,7 @@
             const li = document.createElement('li');
             li.setAttribute('data-id', task.id);
             const categoryClass = `task-item-${task.type}`;
-            li.className = `task-item ${categoryClass} flex items-center bg-gray-700/50 p-3 rounded-lg shadow-sm`;
+            li.className = `task-item ${categoryClass} flex items-center bg-gray-700/50 p-3 rounded-lg shadow-sm text-gray-100`;
             li.innerHTML = `<input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''}><div class="flex-grow ml-4"><span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span><div class="text-xs text-gray-400 mt-1">${formatDate(task.createdAt)}</div></div><button class="delete-btn text-red-500 hover:text-red-700 font-bold ml-4 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>`;
             li.querySelector('.custom-checkbox').addEventListener('change', (e) => updateItemStatus(task.type, task.id, e.target.checked));
             li.querySelector('.delete-btn').addEventListener('click', () => deleteItem(task.type, task.id));
@@ -701,3 +707,4 @@
     </script>
 </body>
 </html>
+

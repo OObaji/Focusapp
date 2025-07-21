@@ -5,11 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Priority Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Lexend', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background-color: #111827; 
+        }
+        #app-container {
+             background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        }
+        #landing-page {
+            background-color: #000000;
+        }
+        #landing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
         }
         .task-item:hover .delete-btn, .milestone-item:hover .delete-btn {
             opacity: 1;
@@ -22,7 +38,7 @@
         }
         .task-text.completed, .milestone-text.completed {
             text-decoration: line-through;
-            color: #9ca3af;
+            color: #6b7280;
         }
         .task-item {
             transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -30,7 +46,7 @@
         }
         .task-item:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.07);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
@@ -39,15 +55,15 @@
         .fade-in {
             animation: fadeIn 0.6s ease-out forwards;
         }
-        .dashboard-card, .goal-card {
-             background: rgba(255, 255, 255, 0.7);
+        .dashboard-card, .goal-card, .pomodoro-container {
+             background: rgba(31, 41, 55, 0.5);
              backdrop-filter: blur(10px);
-             border: 1px solid rgba(255, 255, 255, 0.2);
+             border: 1px solid rgba(255, 255, 255, 0.1);
              transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .dashboard-card:hover, .goal-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         }
         .title-gradient {
             background: -webkit-linear-gradient(45deg, #3b82f6, #8b5cf6);
@@ -60,15 +76,15 @@
 
         /* Custom Checkbox */
         .custom-checkbox {
-            -webkit-appearance: none; appearance: none; background-color: #fff; margin: 0;
+            -webkit-appearance: none; appearance: none; background-color: #374151; margin: 0;
             font: inherit; color: currentColor; width: 1.25em; height: 1.25em;
-            border: 0.15em solid #d1d5db; border-radius: 0.25em;
+            border: 0.15em solid #4b5563; border-radius: 0.25em;
             transform: translateY(-0.075em); display: grid; place-content: center;
             cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         .custom-checkbox::before {
             content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
-            transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em #3b82f6;
+            transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em #ffffff;
             transform-origin: bottom left; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
         }
         .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
@@ -78,92 +94,110 @@
         .nav-link {
             transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
             border-bottom: 2px solid transparent;
+            color: #d1d5db;
         }
         .nav-link.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
         }
-        .nav-link:hover { color: #3b82f6; }
+        .nav-link:hover { color: #60a5fa; }
         
         /* Modal */
         .modal { transition: opacity 0.25s ease; }
         .modal-content { transition: transform 0.25s ease; }
+        
+        /* Pomodoro Timer */
+        .timer-progress-circle {
+            transition: stroke-dashoffset 1s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
     </style>
 </head>
-<body class="text-gray-800">
+<body class="text-gray-300">
     <!-- Landing Page -->
-    <div id="landing-page" class="min-h-screen flex items-center justify-center text-center px-4 fade-in">
-        <div>
-            <h1 class="text-6xl md:text-8xl font-bold title-gradient mb-4">Priority</h1>
-            <p class="text-xl md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto">The smart to-do list that organizes your life, so you don't have to.</p>
+    <div id="landing-page" class="min-h-screen flex items-center justify-center text-center px-4 relative overflow-hidden">
+        <canvas id="landing-canvas"></canvas>
+        <div class="relative z-10">
+            <h1 class="text-6xl md:text-8xl font-bold text-white mb-4">Priority</h1>
+            <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">The smart to-do list that organizes your life, so you don't have to.</p>
             <button id="get-started-btn" class="bg-blue-600 text-white font-bold py-4 px-10 rounded-full text-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">Get Started</button>
         </div>
     </div>
 
     <!-- Main App Container -->
-    <div id="app-container" class="hidden">
+    <div id="app-container" class="hidden min-h-screen">
         <div class="container mx-auto max-w-7xl px-4 py-8">
             <header class="text-center mb-6 fade-in">
                 <h1 class="text-5xl md:text-6xl font-bold title-gradient">Priority Dashboard</h1>
-                <p class="text-lg text-gray-600 mt-3">Your creative space for productivity.</p>
+                <p class="text-lg text-gray-400 mt-3">Your creative space for productivity.</p>
             </header>
 
-            <nav class="flex justify-center space-x-8 mb-8 border-b pb-2">
+            <nav class="flex justify-center space-x-4 md:space-x-8 mb-8 border-b border-gray-700 pb-2">
                 <button id="nav-dashboard" class="nav-link text-lg font-semibold py-2 px-4 active">Dashboard</button>
                 <button id="nav-goals" class="nav-link text-lg font-semibold py-2 px-4">Goals</button>
+                <button id="nav-pomodoro" class="nav-link text-lg font-semibold py-2 px-4">Pomodoro</button>
             </nav>
 
             <!-- Main Dashboard Page -->
             <div id="page-dashboard">
-                <div id="info-bar" class="flex flex-col md:flex-row justify-between items-center mb-10 p-4 rounded-2xl bg-white/70 backdrop-filter backdrop-blur-lg shadow-md fade-in" style="animation-delay: 0.1s;">
+                <div id="info-bar" class="flex flex-col md:flex-row justify-between items-center mb-10 p-4 rounded-2xl bg-gray-800/50 backdrop-filter backdrop-blur-lg shadow-md fade-in" style="animation-delay: 0.1s;">
                     <div id="date-time" class="text-center md:text-left">
-                        <p id="date-display" class="font-semibold text-lg text-gray-800"></p>
-                        <p id="time-display" class="font-bold text-2xl text-gray-900"></p>
+                        <p id="date-display" class="font-semibold text-lg text-gray-300"></p>
+                        <p id="time-display" class="font-bold text-2xl text-white"></p>
                     </div>
                     <div id="weather-display" class="flex items-center mt-4 md:mt-0"></div>
                 </div>
 
                 <div id="auth-container" class="text-center mb-10 fade-in" style="animation-delay: 0.2s;">
-                     <p id="user-id-display" class="text-sm bg-white/50 rounded-full inline-block px-4 py-1 text-gray-500 mb-4"></p>
+                     <p id="user-id-display" class="text-sm bg-gray-800/50 rounded-full inline-block px-4 py-1 text-gray-400 mb-4"></p>
                 </div>
 
-                <div id="dashboard-stats" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.3s;">
-                        <div class="mx-auto bg-gray-200 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
-                        <h3 class="text-lg font-semibold text-gray-500">Total Tasks</h3>
-                        <p id="total-tasks-count" class="text-4xl font-bold text-gray-900 mt-1">0</p>
+                <div id="dashboard-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.3s;">
+                        <div class="bg-gray-700 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-400">Total Tasks</h3>
+                            <p id="total-tasks-count" class="text-4xl font-bold text-white">0</p>
+                        </div>
                     </div>
-                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.4s;">
-                         <div class="mx-auto bg-blue-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                        <h3 class="text-lg font-semibold text-blue-500">Daily</h3>
-                        <p id="daily-tasks-count" class="text-4xl font-bold text-blue-600 mt-1">0</p>
+                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.4s;">
+                         <div class="bg-blue-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-blue-400">Daily</h3>
+                            <p id="daily-tasks-count" class="text-4xl font-bold text-white">0</p>
+                        </div>
                     </div>
-                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.5s;">
-                         <div class="mx-auto bg-green-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
-                        <h3 class="text-lg font-semibold text-green-500">Weekly</h3>
-                        <p id="weekly-tasks-count" class="text-4xl font-bold text-green-600 mt-1">0</p>
+                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.5s;">
+                         <div class="bg-green-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-green-400">Weekly</h3>
+                            <p id="weekly-tasks-count" class="text-4xl font-bold text-white">0</p>
+                        </div>
                     </div>
-                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.6s;">
-                         <div class="mx-auto bg-purple-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0c-.454-.303-.977-.454-1.5-.454V4.5A2.5 2.5 0 014.5 2h15A2.5 2.5 0 0122 4.5v11.046zM10 14a1 1 0 11-2 0 1 1 0 012 0zm3 0a1 1 0 11-2 0 1 1 0 012 0zm3 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg></div>
-                        <h3 class="text-lg font-semibold text-purple-500">Monthly</h3>
-                        <p id="monthly-tasks-count" class="text-4xl font-bold text-purple-600 mt-1">0</p>
+                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.6s;">
+                         <div class="bg-purple-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0c-.454-.303-.977-.454-1.5-.454V4.5A2.5 2.5 0 014.5 2h15A2.5 2.5 0 0122 4.5v11.046z"/></svg></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-purple-400">Monthly</h3>
+                            <p id="monthly-tasks-count" class="text-4xl font-bold text-white">0</p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.7s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Daily Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="daily-task-input" placeholder="Add a new daily task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50"><button id="add-daily-task-btn" class="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.7s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Daily Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="daily-task-input" placeholder="Add a new daily task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-daily-task-btn" class="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="daily-task-list" class="space-y-3"></ul>
                     </div>
-                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.8s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Weekly Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="weekly-task-input" placeholder="Add a new weekly task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white/50"><button id="add-weekly-task-btn" class="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.8s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Weekly Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="weekly-task-input" placeholder="Add a new weekly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-weekly-task-btn" class="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="weekly-task-list" class="space-y-3"></ul>
                     </div>
-                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Monthly Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/50"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="monthly-task-list" class="space-y-3"></ul>
                     </div>
                 </div>
@@ -171,24 +205,47 @@
 
             <!-- Goals Page -->
             <div id="page-goals" class="hidden">
-                <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in">
-                    <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-3">Long-Term Goals</h2>
-                    <div class="add-task-form mb-6"><input type="text" id="goal-input" placeholder="Add a new long-term goal..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white/50"><button id="add-goal-btn" class="w-full mt-2 bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Goal</button></div>
+                <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in">
+                    <h2 class="text-3xl font-bold mb-4 text-gray-200 border-b border-gray-700 pb-3">Long-Term Goals</h2>
+                    <div class="add-task-form mb-6"><input type="text" id="goal-input" placeholder="Add a new long-term goal..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-goal-btn" class="w-full mt-2 bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Goal</button></div>
                     <div id="goal-list" class="space-y-6"></div>
+                </div>
+            </div>
+            
+            <!-- Pomodoro Page -->
+            <div id="page-pomodoro" class="hidden">
+                <div class="pomodoro-container max-w-md mx-auto p-8 rounded-2xl shadow-2xl text-center fade-in">
+                    <h2 class="text-3xl font-bold mb-6 text-white">Pomodoro Timer</h2>
+                    <div class="flex justify-center space-x-2 mb-6">
+                        <button id="pomodoro-mode-btn" class="px-4 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition">Pomodoro</button>
+                        <button id="short-break-mode-btn" class="px-4 py-2 rounded-lg text-gray-800 bg-gray-400 hover:bg-gray-500 transition">Short Break</button>
+                        <button id="long-break-mode-btn" class="px-4 py-2 rounded-lg text-gray-800 bg-gray-400 hover:bg-gray-500 transition">Long Break</button>
+                    </div>
+                    <div class="relative w-64 h-64 mx-auto mb-6">
+                        <svg class="w-full h-full" viewBox="0 0 100 100">
+                            <circle class="text-gray-700" stroke-width="7" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                            <circle id="timer-progress" class="timer-progress-circle text-red-500" stroke-width="7" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                        </svg>
+                        <div id="pomodoro-time" class="absolute inset-0 flex items-center justify-center text-5xl font-bold text-white">25:00</div>
+                    </div>
+                    <div class="flex justify-center space-x-4">
+                        <button id="pomodoro-start-pause-btn" class="px-8 py-3 text-xl font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition transform hover:scale-105">Start</button>
+                        <button id="pomodoro-reset-btn" class="px-8 py-3 text-xl font-semibold text-gray-800 bg-gray-400 rounded-lg hover:bg-gray-500 transition">Reset</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
     <!-- Milestone Modal -->
-    <div id="milestone-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0">
-        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform scale-95">
+    <div id="milestone-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="modal-content bg-gray-800 text-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform scale-95">
             <h3 class="text-2xl font-bold mb-4" id="modal-goal-title"></h3>
             <div class="mb-4">
-                <input type="text" id="milestone-input" placeholder="Add a new milestone..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="milestone-input" placeholder="Add a new milestone..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400">
             </div>
             <div class="flex justify-end space-x-4">
-                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-600 text-gray-200 rounded-lg hover:bg-gray-700 transition">Cancel</button>
                 <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Save Milestone</button>
             </div>
         </div>
@@ -216,8 +273,10 @@
         const getStartedBtn = document.getElementById('get-started-btn');
         const pageDashboard = document.getElementById('page-dashboard');
         const pageGoals = document.getElementById('page-goals');
+        const pagePomodoro = document.getElementById('page-pomodoro');
         const navDashboard = document.getElementById('nav-dashboard');
         const navGoals = document.getElementById('nav-goals');
+        const navPomodoro = document.getElementById('nav-pomodoro');
 
         // Dashboard elements
         const dateDisplay = document.getElementById('date-display');
@@ -245,12 +304,97 @@
         const goalInput = document.getElementById('goal-input');
         const addGoalBtn = document.getElementById('add-goal-btn');
 
+        // Pomodoro Timer Elements
+        const pomodoroTimeEl = document.getElementById('pomodoro-time');
+        const pomodoroStartPauseBtn = document.getElementById('pomodoro-start-pause-btn');
+        const pomodoroResetBtn = document.getElementById('pomodoro-reset-btn');
+        const pomodoroModeBtn = document.getElementById('pomodoro-mode-btn');
+        const shortBreakModeBtn = document.getElementById('short-break-mode-btn');
+        const longBreakModeBtn = document.getElementById('long-break-mode-btn');
+        const timerProgressCircle = document.getElementById('timer-progress');
+        const FULL_DASH_ARRAY = 283;
+
         // Modal elements
         const milestoneModal = document.getElementById('milestone-modal');
         const modalGoalTitle = document.getElementById('modal-goal-title');
         const milestoneInput = document.getElementById('milestone-input');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalSaveBtn = document.getElementById('modal-save-btn');
+
+        // --- Landing Page Animation ---
+        function initLandingAnimation() {
+            const canvas = document.getElementById('landing-canvas');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const geometry = new THREE.PlaneGeometry(window.innerWidth * 2, window.innerHeight * 2, 32, 32);
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    u_time: { value: 0.0 },
+                    u_mouse: { value: new THREE.Vector2(0, 0) },
+                    u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float u_time;
+                    uniform vec2 u_mouse;
+                    uniform vec2 u_resolution;
+                    varying vec2 vUv;
+
+                    void main() {
+                        vec2 st = gl_FragCoord.xy/u_resolution.xy;
+                        vec2 mouse = u_mouse;
+                        float dist = distance(st, mouse);
+                        
+                        vec3 color1 = vec3(0.01, 0.05, 0.15);
+                        vec3 color2 = vec3(0.1, 0.0, 0.2);
+                        vec3 color3 = vec3(0.05, 0.1, 0.25);
+
+                        float noise = sin(st.x * 10.0 + u_time * 0.5 + dist * 5.0) + cos(st.y * 15.0 + u_time * 0.3);
+                        vec3 finalColor = mix(color1, color2, smoothstep(0.0, 1.0, sin(u_time + st.x)));
+                        finalColor = mix(finalColor, color3, smoothstep(0.0, 1.0, cos(u_time * 0.5 + st.y)));
+                        finalColor += noise * 0.05;
+
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            camera.position.z = 1;
+
+            document.addEventListener('mousemove', (event) => {
+                material.uniforms.u_mouse.value.x = event.clientX / window.innerWidth;
+                material.uniforms.u_mouse.value.y = 1.0 - event.clientY / window.innerHeight;
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                material.uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+            });
+
+            const clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                material.uniforms.u_time.value = clock.getElapsedTime();
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        initLandingAnimation();
+
 
         // --- Initial UI Setup ---
         getStartedBtn.addEventListener('click', () => {
@@ -263,11 +407,14 @@
         function showPage(pageName) {
             pageDashboard.classList.toggle('hidden', pageName !== 'dashboard');
             pageGoals.classList.toggle('hidden', pageName !== 'goals');
+            pagePomodoro.classList.toggle('hidden', pageName !== 'pomodoro');
             navDashboard.classList.toggle('active', pageName === 'dashboard');
             navGoals.classList.toggle('active', pageName === 'goals');
+            navPomodoro.classList.toggle('active', pageName === 'pomodoro');
         }
         navDashboard.addEventListener('click', () => showPage('dashboard'));
         navGoals.addEventListener('click', () => showPage('goals'));
+        navPomodoro.addEventListener('click', () => showPage('pomodoro'));
 
         // --- Clock and Weather ---
         function updateClock() {
@@ -284,7 +431,7 @@
                 const data = await response.json();
                 const { temperature, weathercode } = data.current_weather;
                 const weatherInfo = getWeatherIcon(weathercode);
-                weatherDisplay.innerHTML = `<span class="text-4xl mr-3">${weatherInfo.icon}</span><div><p class="font-bold text-2xl text-gray-900">${temperature}°C</p><p class="text-sm text-gray-600">${weatherInfo.desc}</p></div>`;
+                weatherDisplay.innerHTML = `<span class="text-4xl mr-3">${weatherInfo.icon}</span><div><p class="font-bold text-2xl text-white">${temperature}°C</p><p class="text-sm text-gray-400">${weatherInfo.desc}</p></div>`;
             } catch (error) { console.error("Failed to fetch weather:", error); }
         }
         function getWeatherIcon(code) {
@@ -298,10 +445,11 @@
             if (user) {
                 userId = user.uid;
                 userIdDisplay.textContent = `User ID: ${userId}`;
-                await handleTaskResets(); // IMPORTANT: Handle resets before loading data
+                await handleTaskResets();
                 loadDashboardData();
                 loadGoals();
                 setupEventListeners();
+                setMode('pomodoro');
             } else {
                 try {
                     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -318,64 +466,37 @@
             const metadataRef = doc(db, `/artifacts/${appId}/users/${userId}/metadata/tasks`);
             const metadataSnap = await getDoc(metadataRef);
             const metadata = metadataSnap.exists() ? metadataSnap.data() : {};
-
             const updates = {};
-
-            // Daily Reset
             const lastDailyReset = metadata.lastDailyReset?.toDate();
             if (!lastDailyReset || lastDailyReset < getStartOfDay(now)) {
                 await deleteCollection(`/artifacts/${appId}/users/${userId}/daily`);
                 updates.lastDailyReset = now;
             }
-
-            // Weekly Reset
             const lastWeeklyReset = metadata.lastWeeklyReset?.toDate();
             if (!lastWeeklyReset || lastWeeklyReset < getStartOfWeek(now)) {
                 await deleteCollection(`/artifacts/${appId}/users/${userId}/weekly`);
                 updates.lastWeeklyReset = now;
             }
-
-            // Monthly Reset
             const lastMonthlyReset = metadata.lastMonthlyReset?.toDate();
             if (!lastMonthlyReset || lastMonthlyReset < getStartOfMonth(now)) {
                 await deleteCollection(`/artifacts/${appId}/users/${userId}/monthly`);
                 updates.lastMonthlyReset = now;
             }
-
             if (Object.keys(updates).length > 0) {
                 await setDoc(metadataRef, updates, { merge: true });
             }
         }
-
-        function getStartOfDay(date) {
-            const d = new Date(date);
-            d.setHours(0, 0, 0, 0);
-            return d;
-        }
-
-        function getStartOfWeek(date) {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-            return getStartOfDay(new Date(d.setDate(diff)));
-        }
-
-        function getStartOfMonth(date) {
-            const d = new Date(date);
-            return new Date(d.getFullYear(), d.getMonth(), 1);
-        }
-
+        function getStartOfDay(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; }
+        function getStartOfWeek(date) { const d = new Date(date); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return getStartOfDay(new Date(d.setDate(diff))); }
+        function getStartOfMonth(date) { const d = new Date(date); return new Date(d.getFullYear(), d.getMonth(), 1); }
         async function deleteCollection(collectionPath) {
             const q = query(collection(db, collectionPath));
             const snapshot = await getDocs(q);
             if (snapshot.empty) return;
             const batch = writeBatch(db);
-            snapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
+            snapshot.docs.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
         }
-
 
         // --- Modal Logic ---
         function openMilestoneModal(goalId, goalText) {
@@ -404,14 +525,12 @@
                 await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/${type}`), { text: text, completed: false, createdAt: new Date() });
             } catch (e) { console.error(`Error adding ${type}:`, e); }
         }
-        
         async function addMilestone(goalId, text) {
             if (!text.trim() || !userId) return;
             try {
                 await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/goals/${goalId}/milestones`), { text: text, completed: false, createdAt: new Date() });
             } catch (e) { console.error("Error adding milestone: ", e); }
         }
-
         async function deleteItem(type, itemId, subCollectionPath = '') {
             if (!userId) return;
             try {
@@ -419,7 +538,6 @@
                 await deleteDoc(doc(db, docPath));
             } catch (e) { console.error("Error deleting item: ", e); }
         }
-        
         async function updateItemStatus(type, itemId, isCompleted, subCollectionPath = '') {
              if (!userId) return;
             try {
@@ -431,11 +549,7 @@
         // --- Data Loading and Rendering ---
         function loadDashboardData() {
             if (!userId) return;
-            const taskTypes = [
-                { type: 'daily', listElement: dailyTaskList },
-                { type: 'weekly', listElement: weeklyTaskList },
-                { type: 'monthly', listElement: monthlyTaskList }
-            ];
+            const taskTypes = [ { type: 'daily', listElement: dailyTaskList }, { type: 'weekly', listElement: weeklyTaskList }, { type: 'monthly', listElement: monthlyTaskList } ];
             let allTasks = [];
             taskTypes.forEach(({ type, listElement }) => {
                 const q = query(collection(db, `/artifacts/${appId}/users/${userId}/${type}`));
@@ -443,40 +557,27 @@
                     listElement.innerHTML = '';
                     const tasksForType = [];
                     snapshot.forEach(doc => tasksForType.push({ id: doc.id, type: type, ...doc.data() }));
-                    
                     allTasks = allTasks.filter(t => t.type !== type).concat(tasksForType);
-                    
                     tasksForType.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                     tasksForType.forEach(task => renderTask(task, listElement));
                     updateDashboardStats(allTasks);
                 });
             });
         }
-
         function formatDate(timestamp) {
             if (!timestamp || !timestamp.seconds) return '';
             return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
-
         function renderTask(task, listElement) {
             const li = document.createElement('li');
             li.setAttribute('data-id', task.id);
             const categoryClass = `task-item-${task.type}`;
-            li.className = `task-item ${categoryClass} flex items-center bg-white/80 p-3 rounded-lg shadow-sm`;
-            li.innerHTML = `
-                <input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''}>
-                <div class="flex-grow ml-4">
-                    <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
-                    <div class="text-xs text-gray-500 mt-1">${formatDate(task.createdAt)}</div>
-                </div>
-                <button class="delete-btn text-red-500 hover:text-red-700 font-bold ml-4 flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                </button>`;
+            li.className = `task-item ${categoryClass} flex items-center bg-gray-700/50 p-3 rounded-lg shadow-sm`;
+            li.innerHTML = `<input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''}><div class="flex-grow ml-4"><span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span><div class="text-xs text-gray-400 mt-1">${formatDate(task.createdAt)}</div></div><button class="delete-btn text-red-500 hover:text-red-700 font-bold ml-4 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>`;
             li.querySelector('.custom-checkbox').addEventListener('change', (e) => updateItemStatus(task.type, task.id, e.target.checked));
             li.querySelector('.delete-btn').addEventListener('click', () => deleteItem(task.type, task.id));
             listElement.appendChild(li);
         }
-
         function updateDashboardStats(allTasks) {
             const dailyCount = allTasks.filter(t => t.type === 'daily').length;
             const weeklyCount = allTasks.filter(t => t.type === 'weekly').length;
@@ -486,7 +587,6 @@
             weeklyTasksCountEl.textContent = weeklyCount;
             monthlyTasksCountEl.textContent = monthlyCount;
         }
-
         function loadGoals() {
             if (!userId) return;
             const q = query(collection(db, `/artifacts/${appId}/users/${userId}/goals`));
@@ -495,7 +595,6 @@
                 snapshot.forEach(doc => renderGoal({ id: doc.id, ...doc.data() }));
             });
         }
-
         function renderGoal(goal) {
             const goalCard = document.createElement('div');
             goalCard.className = 'goal-card p-6 rounded-2xl shadow-lg';
@@ -505,13 +604,7 @@
                 milestonesSnapshot.forEach(doc => milestones.push({ id: doc.id, ...doc.data() }));
                 const completedMilestones = milestones.filter(m => m.completed).length;
                 const progress = milestones.length > 0 ? (completedMilestones / milestones.length) * 100 : 0;
-                goalCard.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <h3 class="text-xl font-bold text-amber-700">${goal.text}</h3>
-                        <button class="delete-goal-btn text-red-500 hover:text-red-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
-                    </div>
-                    <div class="mt-4"><div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-600">Progress</span><span class="text-sm font-medium text-gray-600">${Math.round(progress)}%</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-amber-500 h-2.5 rounded-full" style="width: ${progress}%"></div></div></div>
-                    <div class="mt-4 pt-4 border-t border-gray-200"><h4 class="font-semibold text-gray-700 mb-2">Milestones</h4><ul class="milestone-list space-y-2">${milestones.map(m => `<li class="milestone-item flex items-center"><input type="checkbox" data-id="${m.id}" class="custom-checkbox flex-shrink-0" ${m.completed ? 'checked' : ''}><span class="milestone-text flex-grow ml-3 ${m.completed ? 'completed' : ''}">${m.text}</span><button data-id="${m.id}" class="delete-milestone-btn delete-btn text-red-400 hover:text-red-600"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button></li>`).join('')}</ul><button class="add-milestone-btn mt-4 w-full text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg py-2 transition">Add Milestone</button></div>`;
+                goalCard.innerHTML = `<div class="flex justify-between items-start"><h3 class="text-xl font-bold text-amber-400">${goal.text}</h3><button class="delete-goal-btn text-red-500 hover:text-red-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div><div class="mt-4"><div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-400">Progress</span><span class="text-sm font-medium text-gray-400">${Math.round(progress)}%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div class="bg-amber-500 h-2.5 rounded-full" style="width: ${progress}%"></div></div></div><div class="mt-4 pt-4 border-t border-gray-700"><h4 class="font-semibold text-gray-300 mb-2">Milestones</h4><ul class="milestone-list space-y-2">${milestones.map(m => `<li class="milestone-item flex items-center"><input type="checkbox" data-id="${m.id}" class="custom-checkbox flex-shrink-0" ${m.completed ? 'checked' : ''}><span class="milestone-text flex-grow ml-3 ${m.completed ? 'completed' : ''}">${m.text}</span><button data-id="${m.id}" class="delete-milestone-btn delete-btn text-red-400 hover:text-red-600"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button></li>`).join('')}</ul><button class="add-milestone-btn mt-4 w-full text-sm text-blue-400 bg-blue-900/50 hover:bg-blue-800/50 rounded-lg py-2 transition">Add Milestone</button></div>`;
                 goalCard.querySelector('.delete-goal-btn').addEventListener('click', () => deleteItem('goals', goal.id));
                 goalCard.querySelector('.add-milestone-btn').addEventListener('click', () => openMilestoneModal(goal.id, goal.text));
                 goalCard.querySelectorAll('.milestone-item .custom-checkbox').forEach(cb => cb.addEventListener('change', (e) => updateItemStatus('goals', goal.id, e.target.checked, `/milestones/${e.target.dataset.id}`)));
@@ -519,6 +612,65 @@
             });
             goalList.appendChild(goalCard);
         }
+        
+        // --- Pomodoro State & Logic ---
+        let pomodoroInterval = null;
+        let timerState = { mode: 'pomodoro', running: false, time: 25 * 60, modes: { pomodoro: { time: 25 * 60, color: 'text-red-500' }, shortBreak: { time: 5 * 60, color: 'text-green-500' }, longBreak: { time: 15 * 60, color: 'text-blue-500' } } };
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timerState.time / 60);
+            const seconds = timerState.time % 60;
+            pomodoroTimeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            updateProgressCircle();
+        }
+        function updateProgressCircle() {
+            const totalTime = timerState.modes[timerState.mode].time;
+            const timeFraction = timerState.time / totalTime;
+            const offset = timeFraction * FULL_DASH_ARRAY;
+            timerProgressCircle.style.strokeDashoffset = offset;
+        }
+        function startTimer() {
+            if (timerState.running) return;
+            timerState.running = true;
+            pomodoroStartPauseBtn.textContent = 'Pause';
+            Tone.start();
+            pomodoroInterval = setInterval(() => {
+                if (timerState.time > 0) {
+                    timerState.time--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(pomodoroInterval);
+                    timerState.running = false;
+                    pomodoroStartPauseBtn.textContent = 'Start';
+                    playFinishSound();
+                    resetTimer();
+                }
+            }, 1000);
+        }
+        function pauseTimer() {
+            if (!timerState.running) return;
+            timerState.running = false;
+            pomodoroStartPauseBtn.textContent = 'Start';
+            clearInterval(pomodoroInterval);
+        }
+        function resetTimer() {
+            clearInterval(pomodoroInterval);
+            timerState.running = false;
+            timerState.time = timerState.modes[timerState.mode].time;
+            pomodoroStartPauseBtn.textContent = 'Start';
+            updateTimerDisplay();
+        }
+        function setMode(mode) {
+            timerState.mode = mode;
+            const modeButtons = [pomodoroModeBtn, shortBreakModeBtn, longBreakModeBtn];
+            const modeColors = { pomodoro: { bg: 'bg-red-500', text: 'text-white', hover: 'hover:bg-red-600' }, shortBreak: { bg: 'bg-green-500', text: 'text-white', hover: 'hover:bg-green-600' }, longBreak: { bg: 'bg-blue-500', text: 'text-white', hover: 'hover:bg-blue-600' } };
+            modeButtons.forEach(btn => { btn.classList.remove(...Object.values(modeColors).flatMap(c => Object.values(c))); btn.classList.add('bg-gray-400', 'text-gray-800', 'hover:bg-gray-500'); });
+            const selectedBtn = document.getElementById(`${mode}-mode-btn`);
+            selectedBtn.classList.remove('bg-gray-400', 'text-gray-800', 'hover:bg-gray-500');
+            selectedBtn.classList.add(modeColors[mode].bg, modeColors[mode].text, modeColors[mode].hover);
+            timerProgressCircle.setAttribute('class', `timer-progress-circle ${timerState.modes[mode].color}`);
+            resetTimer();
+        }
+        function playFinishSound() { const synth = new Tone.Synth().toDestination(); synth.triggerAttackRelease("C5", "8n", Tone.now()); synth.triggerAttackRelease("G5", "8n", Tone.now() + 0.2); }
 
         // --- Event Listeners ---
         function setupEventListeners() {
@@ -539,6 +691,12 @@
                     closeMilestoneModal();
                 }
             });
+
+            pomodoroStartPauseBtn.addEventListener('click', () => { timerState.running ? pauseTimer() : startTimer(); });
+            pomodoroResetBtn.addEventListener('click', resetTimer);
+            pomodoroModeBtn.addEventListener('click', () => setMode('pomodoro'));
+            shortBreakModeBtn.addEventListener('click', () => setMode('shortBreak'));
+            longBreakModeBtn.addEventListener('click', () => setMode('longBreak'));
         }
     </script>
 </body>

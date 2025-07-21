@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Priority Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .task-item:hover .delete-btn, .milestone-item:hover .delete-btn {
+            opacity: 1;
+            transform: scale(1.1) translateX(0);
+        }
+        .task-item .delete-btn, .milestone-item .delete-btn {
+            opacity: 0;
+            transform: translateX(5px);
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+        .task-text.completed, .milestone-text.completed {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        .task-item {
+            transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            border-left-width: 4px;
+        }
+        .task-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.07);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .dashboard-card, .goal-card {
+             background: rgba(255, 255, 255, 0.7);
+             backdrop-filter: blur(10px);
+             border: 1px solid rgba(255, 255, 255, 0.2);
+             transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .dashboard-card:hover, .goal-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .title-gradient {
+            background: -webkit-linear-gradient(45deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .task-item-daily { border-color: #3b82f6; }
+        .task-item-weekly { border-color: #16a34a; }
+        .task-item-monthly { border-color: #8b5cf6; }
+
+        /* Custom Checkbox */
+        .custom-checkbox {
+            -webkit-appearance: none; appearance: none; background-color: #fff; margin: 0;
+            font: inherit; color: currentColor; width: 1.25em; height: 1.25em;
+            border: 0.15em solid #d1d5db; border-radius: 0.25em;
+            transform: translateY(-0.075em); display: grid; place-content: center;
+            cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .custom-checkbox::before {
+            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
+            transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em #3b82f6;
+            transform-origin: bottom left; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .custom-checkbox:checked::before { transform: scale(1); }
+        
+        /* Nav styling */
+        .nav-link {
+            transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        .nav-link:hover { color: #3b82f6; }
+        
+        /* Modal */
+        .modal { transition: opacity 0.25s ease; }
+        .modal-content { transition: transform 0.25s ease; }
+    </style>
+</head>
+<body class="text-gray-800">
+    <!-- Landing Page -->
+    <div id="landing-page" class="min-h-screen flex items-center justify-center text-center px-4 fade-in">
+        <div>
+            <h1 class="text-6xl md:text-8xl font-bold title-gradient mb-4">Priority</h1>
+            <p class="text-xl md:text-2xl text-gray-700 mb-8 max-w-2xl mx-auto">The smart to-do list that organizes your life, so you don't have to.</p>
+            <button id="get-started-btn" class="bg-blue-600 text-white font-bold py-4 px-10 rounded-full text-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">Get Started</button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="hidden">
+        <div class="container mx-auto max-w-7xl px-4 py-8">
+            <header class="text-center mb-6 fade-in">
+                <h1 class="text-5xl md:text-6xl font-bold title-gradient">Priority Dashboard</h1>
+                <p class="text-lg text-gray-600 mt-3">Your creative space for productivity.</p>
+            </header>
+
+            <nav class="flex justify-center space-x-8 mb-8 border-b pb-2">
+                <button id="nav-dashboard" class="nav-link text-lg font-semibold py-2 px-4 active">Dashboard</button>
+                <button id="nav-goals" class="nav-link text-lg font-semibold py-2 px-4">Goals</button>
+            </nav>
+
+            <!-- Main Dashboard Page -->
+            <div id="page-dashboard">
+                <div id="info-bar" class="flex flex-col md:flex-row justify-between items-center mb-10 p-4 rounded-2xl bg-white/70 backdrop-filter backdrop-blur-lg shadow-md fade-in" style="animation-delay: 0.1s;">
+                    <div id="date-time" class="text-center md:text-left">
+                        <p id="date-display" class="font-semibold text-lg text-gray-800"></p>
+                        <p id="time-display" class="font-bold text-2xl text-gray-900"></p>
+                    </div>
+                    <div id="weather-display" class="flex items-center mt-4 md:mt-0"></div>
+                </div>
+
+                <div id="auth-container" class="text-center mb-10 fade-in" style="animation-delay: 0.2s;">
+                     <p id="user-id-display" class="text-sm bg-white/50 rounded-full inline-block px-4 py-1 text-gray-500 mb-4"></p>
+                </div>
+
+                <div id="dashboard-stats" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.3s;">
+                        <div class="mx-auto bg-gray-200 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+                        <h3 class="text-lg font-semibold text-gray-500">Total Tasks</h3>
+                        <p id="total-tasks-count" class="text-4xl font-bold text-gray-900 mt-1">0</p>
+                    </div>
+                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.4s;">
+                         <div class="mx-auto bg-blue-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+                        <h3 class="text-lg font-semibold text-blue-500">Daily</h3>
+                        <p id="daily-tasks-count" class="text-4xl font-bold text-blue-600 mt-1">0</p>
+                    </div>
+                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.5s;">
+                         <div class="mx-auto bg-green-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+                        <h3 class="text-lg font-semibold text-green-500">Weekly</h3>
+                        <p id="weekly-tasks-count" class="text-4xl font-bold text-green-600 mt-1">0</p>
+                    </div>
+                    <div class="dashboard-card p-5 rounded-2xl shadow-lg text-center fade-in" style="animation-delay: 0.6s;">
+                         <div class="mx-auto bg-purple-100 h-12 w-12 rounded-full flex items-center justify-center mb-3"><svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0c-.454-.303-.977-.454-1.5-.454V4.5A2.5 2.5 0 014.5 2h15A2.5 2.5 0 0122 4.5v11.046zM10 14a1 1 0 11-2 0 1 1 0 012 0zm3 0a1 1 0 11-2 0 1 1 0 012 0zm3 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg></div>
+                        <h3 class="text-lg font-semibold text-purple-500">Monthly</h3>
+                        <p id="monthly-tasks-count" class="text-4xl font-bold text-purple-600 mt-1">0</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.7s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Daily Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="daily-task-input" placeholder="Add a new daily task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50"><button id="add-daily-task-btn" class="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                        <ul id="daily-task-list" class="space-y-3"></ul>
+                    </div>
+                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.8s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Weekly Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="weekly-task-input" placeholder="Add a new weekly task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white/50"><button id="add-weekly-task-btn" class="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                        <ul id="weekly-task-list" class="space-y-3"></ul>
+                    </div>
+                    <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
+                        <h2 class="text-2xl font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-3">Monthly Tasks</h2>
+                        <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/50"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
+                        <ul id="monthly-task-list" class="space-y-3"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Goals Page -->
+            <div id="page-goals" class="hidden">
+                <div class="bg-white/70 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in">
+                    <h2 class="text-3xl font-bold mb-4 text-gray-800 border-b border-gray-200 pb-3">Long-Term Goals</h2>
+                    <div class="add-task-form mb-6"><input type="text" id="goal-input" placeholder="Add a new long-term goal..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white/50"><button id="add-goal-btn" class="w-full mt-2 bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Goal</button></div>
+                    <div id="goal-list" class="space-y-6"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Milestone Modal -->
+    <div id="milestone-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform scale-95">
+            <h3 class="text-2xl font-bold mb-4" id="modal-goal-title"></h3>
+            <div class="mb-4">
+                <input type="text" id="milestone-input" placeholder="Add a new milestone..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex justify-end space-x-4">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Cancel</button>
+                <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Save Milestone</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, getDoc, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "your-fallback-api-key", authDomain: "...", projectId: "..." };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId = null;
+        let currentGoalId = null;
+
+        // Page elements
+        const landingPage = document.getElementById('landing-page');
+        const appContainer = document.getElementById('app-container');
+        const getStartedBtn = document.getElementById('get-started-btn');
+        const pageDashboard = document.getElementById('page-dashboard');
+        const pageGoals = document.getElementById('page-goals');
+        const navDashboard = document.getElementById('nav-dashboard');
+        const navGoals = document.getElementById('nav-goals');
+
+        // Dashboard elements
+        const dateDisplay = document.getElementById('date-display');
+        const timeDisplay = document.getElementById('time-display');
+        const weatherDisplay = document.getElementById('weather-display');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const totalTasksCountEl = document.getElementById('total-tasks-count');
+        const dailyTasksCountEl = document.getElementById('daily-tasks-count');
+        const weeklyTasksCountEl = document.getElementById('weekly-tasks-count');
+        const monthlyTasksCountEl = document.getElementById('monthly-tasks-count');
+
+        // Task lists
+        const dailyTaskList = document.getElementById('daily-task-list');
+        const weeklyTaskList = document.getElementById('weekly-task-list');
+        const monthlyTaskList = document.getElementById('monthly-task-list');
+        const dailyTaskInput = document.getElementById('daily-task-input');
+        const weeklyTaskInput = document.getElementById('weekly-task-input');
+        const monthlyTaskInput = document.getElementById('monthly-task-input');
+        const addDailyTaskBtn = document.getElementById('add-daily-task-btn');
+        const addWeeklyTaskBtn = document.getElementById('add-weekly-task-btn');
+        const addMonthlyTaskBtn = document.getElementById('add-monthly-task-btn');
+
+        // Goal lists
+        const goalList = document.getElementById('goal-list');
+        const goalInput = document.getElementById('goal-input');
+        const addGoalBtn = document.getElementById('add-goal-btn');
+
+        // Modal elements
+        const milestoneModal = document.getElementById('milestone-modal');
+        const modalGoalTitle = document.getElementById('modal-goal-title');
+        const milestoneInput = document.getElementById('milestone-input');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalSaveBtn = document.getElementById('modal-save-btn');
+
+        // --- Initial UI Setup ---
+        getStartedBtn.addEventListener('click', () => {
+            landingPage.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            appContainer.classList.add('fade-in');
+        });
+
+        // --- Navigation ---
+        function showPage(pageName) {
+            pageDashboard.classList.toggle('hidden', pageName !== 'dashboard');
+            pageGoals.classList.toggle('hidden', pageName !== 'goals');
+            navDashboard.classList.toggle('active', pageName === 'dashboard');
+            navGoals.classList.toggle('active', pageName === 'goals');
+        }
+        navDashboard.addEventListener('click', () => showPage('dashboard'));
+        navGoals.addEventListener('click', () => showPage('goals'));
+
+        // --- Clock and Weather ---
+        function updateClock() {
+            const now = new Date();
+            dateDisplay.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            timeDisplay.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        async function fetchWeather() {
+            try {
+                const lat = 53.41, lon = -2.99; // Liverpool
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Weather data not available');
+                const data = await response.json();
+                const { temperature, weathercode } = data.current_weather;
+                const weatherInfo = getWeatherIcon(weathercode);
+                weatherDisplay.innerHTML = `<span class="text-4xl mr-3">${weatherInfo.icon}</span><div><p class="font-bold text-2xl text-gray-900">${temperature}°C</p><p class="text-sm text-gray-600">${weatherInfo.desc}</p></div>`;
+            } catch (error) { console.error("Failed to fetch weather:", error); }
+        }
+        function getWeatherIcon(code) {
+            const icons = { 0: { icon: '☀️', desc: 'Clear' }, 1: { icon: '🌤️', desc: 'Mainly Clear' }, 2: { icon: '🌥️', desc: 'Partly Cloudy' }, 3: { icon: '☁️', desc: 'Overcast' }, 45: { icon: '🌫️', desc: 'Fog' }, 61: { icon: '💧', desc: 'Rain' }, 80: { icon: '🌦️', desc: 'Showers' }, 95: { icon: '⛈️', desc: 'Thunderstorm' } };
+            return icons[code] || { icon: '❓', desc: 'Unknown' };
+        }
+        updateClock(); setInterval(updateClock, 1000); fetchWeather();
+
+        // --- Auth & Main Logic ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = `User ID: ${userId}`;
+                await handleTaskResets(); // IMPORTANT: Handle resets before loading data
+                loadDashboardData();
+                loadGoals();
+                setupEventListeners();
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else { await signInAnonymously(auth); }
+                } catch (error) { console.error("Error during sign-in:", error); }
+            }
+        });
+
+        // --- Task Reset Logic ---
+        async function handleTaskResets() {
+            if (!userId) return;
+            const now = new Date();
+            const metadataRef = doc(db, `/artifacts/${appId}/users/${userId}/metadata/tasks`);
+            const metadataSnap = await getDoc(metadataRef);
+            const metadata = metadataSnap.exists() ? metadataSnap.data() : {};
+
+            const updates = {};
+
+            // Daily Reset
+            const lastDailyReset = metadata.lastDailyReset?.toDate();
+            if (!lastDailyReset || lastDailyReset < getStartOfDay(now)) {
+                await deleteCollection(`/artifacts/${appId}/users/${userId}/daily`);
+                updates.lastDailyReset = now;
+            }
+
+            // Weekly Reset
+            const lastWeeklyReset = metadata.lastWeeklyReset?.toDate();
+            if (!lastWeeklyReset || lastWeeklyReset < getStartOfWeek(now)) {
+                await deleteCollection(`/artifacts/${appId}/users/${userId}/weekly`);
+                updates.lastWeeklyReset = now;
+            }
+
+            // Monthly Reset
+            const lastMonthlyReset = metadata.lastMonthlyReset?.toDate();
+            if (!lastMonthlyReset || lastMonthlyReset < getStartOfMonth(now)) {
+                await deleteCollection(`/artifacts/${appId}/users/${userId}/monthly`);
+                updates.lastMonthlyReset = now;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await setDoc(metadataRef, updates, { merge: true });
+            }
+        }
+
+        function getStartOfDay(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+            return getStartOfDay(new Date(d.setDate(diff)));
+        }
+
+        function getStartOfMonth(date) {
+            const d = new Date(date);
+            return new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+
+        async function deleteCollection(collectionPath) {
+            const q = query(collection(db, collectionPath));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return;
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
+
+
+        // --- Modal Logic ---
+        function openMilestoneModal(goalId, goalText) {
+            currentGoalId = goalId;
+            modalGoalTitle.textContent = `Add Milestone for: ${goalText}`;
+            milestoneModal.classList.remove('hidden');
+            setTimeout(() => {
+                milestoneModal.classList.remove('opacity-0');
+                milestoneModal.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        }
+        function closeMilestoneModal() {
+            milestoneModal.classList.add('opacity-0');
+            milestoneModal.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => {
+                milestoneModal.classList.add('hidden');
+                milestoneInput.value = '';
+                currentGoalId = null;
+            }, 250);
+        }
+        
+        // --- Generic Firestore Functions ---
+        async function addItem(type, text) {
+            if (!text.trim() || !userId) return;
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/${type}`), { text: text, completed: false, createdAt: new Date() });
+            } catch (e) { console.error(`Error adding ${type}:`, e); }
+        }
+        
+        async function addMilestone(goalId, text) {
+            if (!text.trim() || !userId) return;
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/goals/${goalId}/milestones`), { text: text, completed: false, createdAt: new Date() });
+            } catch (e) { console.error("Error adding milestone: ", e); }
+        }
+
+        async function deleteItem(type, itemId, subCollectionPath = '') {
+            if (!userId) return;
+            try {
+                const docPath = `/artifacts/${appId}/users/${userId}/${type}/${itemId}${subCollectionPath}`;
+                await deleteDoc(doc(db, docPath));
+            } catch (e) { console.error("Error deleting item: ", e); }
+        }
+        
+        async function updateItemStatus(type, itemId, isCompleted, subCollectionPath = '') {
+             if (!userId) return;
+            try {
+                const docPath = `/artifacts/${appId}/users/${userId}/${type}/${itemId}${subCollectionPath}`;
+                await updateDoc(doc(db, docPath), { completed: isCompleted });
+            } catch (e) { console.error("Error updating status: ", e); }
+        }
+
+        // --- Data Loading and Rendering ---
+        function loadDashboardData() {
+            if (!userId) return;
+            const taskTypes = [
+                { type: 'daily', listElement: dailyTaskList },
+                { type: 'weekly', listElement: weeklyTaskList },
+                { type: 'monthly', listElement: monthlyTaskList }
+            ];
+            let allTasks = [];
+            taskTypes.forEach(({ type, listElement }) => {
+                const q = query(collection(db, `/artifacts/${appId}/users/${userId}/${type}`));
+                onSnapshot(q, (snapshot) => {
+                    listElement.innerHTML = '';
+                    const tasksForType = [];
+                    snapshot.forEach(doc => tasksForType.push({ id: doc.id, type: type, ...doc.data() }));
+                    
+                    allTasks = allTasks.filter(t => t.type !== type).concat(tasksForType);
+                    
+                    tasksForType.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                    tasksForType.forEach(task => renderTask(task, listElement));
+                    updateDashboardStats(allTasks);
+                });
+            });
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp || !timestamp.seconds) return '';
+            return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function renderTask(task, listElement) {
+            const li = document.createElement('li');
+            li.setAttribute('data-id', task.id);
+            const categoryClass = `task-item-${task.type}`;
+            li.className = `task-item ${categoryClass} flex items-center bg-white/80 p-3 rounded-lg shadow-sm`;
+            li.innerHTML = `
+                <input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''}>
+                <div class="flex-grow ml-4">
+                    <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
+                    <div class="text-xs text-gray-500 mt-1">${formatDate(task.createdAt)}</div>
+                </div>
+                <button class="delete-btn text-red-500 hover:text-red-700 font-bold ml-4 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                </button>`;
+            li.querySelector('.custom-checkbox').addEventListener('change', (e) => updateItemStatus(task.type, task.id, e.target.checked));
+            li.querySelector('.delete-btn').addEventListener('click', () => deleteItem(task.type, task.id));
+            listElement.appendChild(li);
+        }
+
+        function updateDashboardStats(allTasks) {
+            const dailyCount = allTasks.filter(t => t.type === 'daily').length;
+            const weeklyCount = allTasks.filter(t => t.type === 'weekly').length;
+            const monthlyCount = allTasks.filter(t => t.type === 'monthly').length;
+            totalTasksCountEl.textContent = dailyCount + weeklyCount + monthlyCount;
+            dailyTasksCountEl.textContent = dailyCount;
+            weeklyTasksCountEl.textContent = weeklyCount;
+            monthlyTasksCountEl.textContent = monthlyCount;
+        }
+
+        function loadGoals() {
+            if (!userId) return;
+            const q = query(collection(db, `/artifacts/${appId}/users/${userId}/goals`));
+            onSnapshot(q, (snapshot) => {
+                goalList.innerHTML = '';
+                snapshot.forEach(doc => renderGoal({ id: doc.id, ...doc.data() }));
+            });
+        }
+
+        function renderGoal(goal) {
+            const goalCard = document.createElement('div');
+            goalCard.className = 'goal-card p-6 rounded-2xl shadow-lg';
+            const milestonesCollection = collection(db, `/artifacts/${appId}/users/${userId}/goals/${goal.id}/milestones`);
+            onSnapshot(milestonesCollection, (milestonesSnapshot) => {
+                const milestones = [];
+                milestonesSnapshot.forEach(doc => milestones.push({ id: doc.id, ...doc.data() }));
+                const completedMilestones = milestones.filter(m => m.completed).length;
+                const progress = milestones.length > 0 ? (completedMilestones / milestones.length) * 100 : 0;
+                goalCard.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-xl font-bold text-amber-700">${goal.text}</h3>
+                        <button class="delete-goal-btn text-red-500 hover:text-red-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                    </div>
+                    <div class="mt-4"><div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-600">Progress</span><span class="text-sm font-medium text-gray-600">${Math.round(progress)}%</span></div><div class="w-full bg-gray-200 rounded-full h-2.5"><div class="bg-amber-500 h-2.5 rounded-full" style="width: ${progress}%"></div></div></div>
+                    <div class="mt-4 pt-4 border-t border-gray-200"><h4 class="font-semibold text-gray-700 mb-2">Milestones</h4><ul class="milestone-list space-y-2">${milestones.map(m => `<li class="milestone-item flex items-center"><input type="checkbox" data-id="${m.id}" class="custom-checkbox flex-shrink-0" ${m.completed ? 'checked' : ''}><span class="milestone-text flex-grow ml-3 ${m.completed ? 'completed' : ''}">${m.text}</span><button data-id="${m.id}" class="delete-milestone-btn delete-btn text-red-400 hover:text-red-600"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button></li>`).join('')}</ul><button class="add-milestone-btn mt-4 w-full text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg py-2 transition">Add Milestone</button></div>`;
+                goalCard.querySelector('.delete-goal-btn').addEventListener('click', () => deleteItem('goals', goal.id));
+                goalCard.querySelector('.add-milestone-btn').addEventListener('click', () => openMilestoneModal(goal.id, goal.text));
+                goalCard.querySelectorAll('.milestone-item .custom-checkbox').forEach(cb => cb.addEventListener('change', (e) => updateItemStatus('goals', goal.id, e.target.checked, `/milestones/${e.target.dataset.id}`)));
+                goalCard.querySelectorAll('.delete-milestone-btn').forEach(btn => btn.addEventListener('click', (e) => deleteItem('goals', goal.id, `/milestones/${e.currentTarget.dataset.id}`)));
+            });
+            goalList.appendChild(goalCard);
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            const setupCategory = (button, input, type) => {
+                button.addEventListener('click', () => { addItem(type, input.value); input.value = ''; });
+                input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { addItem(type, input.value); input.value = ''; } });
+            };
+            setupCategory(addDailyTaskBtn, dailyTaskInput, 'daily');
+            setupCategory(addWeeklyTaskBtn, weeklyTaskInput, 'weekly');
+            setupCategory(addMonthlyTaskBtn, monthlyTaskInput, 'monthly');
+            setupCategory(addGoalBtn, goalInput, 'goals');
+            
+            modalCancelBtn.addEventListener('click', closeMilestoneModal);
+            modalSaveBtn.addEventListener('click', async () => {
+                const text = milestoneInput.value;
+                if (text.trim() && currentGoalId) {
+                    await addMilestone(currentGoalId, text);
+                    closeMilestoneModal();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

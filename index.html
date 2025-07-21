@@ -196,7 +196,7 @@
                         <ul id="weekly-task-list" class="space-y-3"></ul>
                     </div>
                     <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks - July</h2>
+                        <h2 id="monthly-tasks-title" class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks</h2>
                         <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
                         <ul id="monthly-task-list" class="space-y-3"></ul>
                     </div>
@@ -254,11 +254,24 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, getDoc, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "your-fallback-api-key", authDomain: "...", projectId: "..." };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- Firebase Configuration ---
+        // This configuration uses environment variables provided by the platform.
+        // For local testing or deployment, replace this with your own Firebase project credentials.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config)
+            : {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_AUTH_DOMAIN",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                appId: "YOUR_APP_ID"
+              };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'priority-tracker-app';
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -447,9 +460,12 @@
                 userIdDisplay.textContent = `User ID: ${userId}`;
                 
                 const dailyTasksTitle = document.getElementById('daily-tasks-title');
+                const monthlyTasksTitle = document.getElementById('monthly-tasks-title');
                 const today = new Date();
                 const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
+                const month = today.toLocaleDateString('en-US', { month: 'long' });
                 dailyTasksTitle.textContent = `Daily Tasks - ${dayOfWeek}`;
+                monthlyTasksTitle.textContent = `Monthly Tasks - ${month}`;
 
                 await handleTaskResets();
                 loadDashboardData();
@@ -458,9 +474,7 @@
                 setMode('pomodoro');
             } else {
                 try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else { await signInAnonymously(auth); }
+                    await signInAnonymously(auth);
                 } catch (error) { console.error("Error during sign-in:", error); }
             }
         });
@@ -707,4 +721,3 @@
     </script>
 </body>
 </html>
-

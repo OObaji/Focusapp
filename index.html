@@ -258,21 +258,16 @@
         import { getFirestore, doc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, getDoc, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        // This configuration uses environment variables provided by the platform.
-        // For local testing or deployment, replace this with your own Firebase project credentials.
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config)
-            : {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "YOUR_AUTH_DOMAIN",
-                projectId: "YOUR_PROJECT_ID",
-                storageBucket: "YOUR_STORAGE_BUCKET",
-                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                appId: "YOUR_APP_ID"
-              };
+        const firebaseConfig = {
+            apiKey: "AIzaSyArtHZJxBxWew0fJpexUpq6ABywSZCsD2A",
+            authDomain: "focusapp-585d3.firebaseapp.com",
+            projectId: "focusapp-585d3",
+            storageBucket: "focusapp-585d3.appspot.com",
+            messagingSenderId: "8850203719",
+            appId: "1:8850203719:web:7abdcbae6489e1d9ed3d62",
+            measurementId: "G-EQ174C9P59"
+        };
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'priority-tracker-app';
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -483,23 +478,23 @@
         async function handleTaskResets() {
             if (!userId) return;
             const now = new Date();
-            const metadataRef = doc(db, `/artifacts/${appId}/users/${userId}/metadata/tasks`);
+            const metadataRef = doc(db, `users/${userId}/metadata/tasks`);
             const metadataSnap = await getDoc(metadataRef);
             const metadata = metadataSnap.exists() ? metadataSnap.data() : {};
             const updates = {};
             const lastDailyReset = metadata.lastDailyReset?.toDate();
             if (!lastDailyReset || lastDailyReset < getStartOfDay(now)) {
-                await deleteCollection(`/artifacts/${appId}/users/${userId}/daily`);
+                await deleteCollection(`users/${userId}/daily`);
                 updates.lastDailyReset = now;
             }
             const lastWeeklyReset = metadata.lastWeeklyReset?.toDate();
             if (!lastWeeklyReset || lastWeeklyReset < getStartOfWeek(now)) {
-                await deleteCollection(`/artifacts/${appId}/users/${userId}/weekly`);
+                await deleteCollection(`users/${userId}/weekly`);
                 updates.lastWeeklyReset = now;
             }
             const lastMonthlyReset = metadata.lastMonthlyReset?.toDate();
             if (!lastMonthlyReset || lastMonthlyReset < getStartOfMonth(now)) {
-                await deleteCollection(`/artifacts/${appId}/users/${userId}/monthly`);
+                await deleteCollection(`users/${userId}/monthly`);
                 updates.lastMonthlyReset = now;
             }
             if (Object.keys(updates).length > 0) {
@@ -542,26 +537,26 @@
         async function addItem(type, text) {
             if (!text.trim() || !userId) return;
             try {
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/${type}`), { text: text, completed: false, createdAt: new Date() });
+                await addDoc(collection(db, `users/${userId}/${type}`), { text: text, completed: false, createdAt: new Date() });
             } catch (e) { console.error(`Error adding ${type}:`, e); }
         }
         async function addMilestone(goalId, text) {
             if (!text.trim() || !userId) return;
             try {
-                await addDoc(collection(db, `/artifacts/${appId}/users/${userId}/goals/${goalId}/milestones`), { text: text, completed: false, createdAt: new Date() });
+                await addDoc(collection(db, `users/${userId}/goals/${goalId}/milestones`), { text: text, completed: false, createdAt: new Date() });
             } catch (e) { console.error("Error adding milestone: ", e); }
         }
         async function deleteItem(type, itemId, subCollectionPath = '') {
             if (!userId) return;
             try {
-                const docPath = `/artifacts/${appId}/users/${userId}/${type}/${itemId}${subCollectionPath}`;
+                const docPath = `users/${userId}/${type}/${itemId}${subCollectionPath}`;
                 await deleteDoc(doc(db, docPath));
             } catch (e) { console.error("Error deleting item: ", e); }
         }
         async function updateItemStatus(type, itemId, isCompleted, subCollectionPath = '') {
              if (!userId) return;
             try {
-                const docPath = `/artifacts/${appId}/users/${userId}/${type}/${itemId}${subCollectionPath}`;
+                const docPath = `users/${userId}/${type}/${itemId}${subCollectionPath}`;
                 await updateDoc(doc(db, docPath), { completed: isCompleted });
             } catch (e) { console.error("Error updating status: ", e); }
         }
@@ -572,7 +567,7 @@
             const taskTypes = [ { type: 'daily', listElement: dailyTaskList }, { type: 'weekly', listElement: weeklyTaskList }, { type: 'monthly', listElement: monthlyTaskList } ];
             let allTasks = [];
             taskTypes.forEach(({ type, listElement }) => {
-                const q = query(collection(db, `/artifacts/${appId}/users/${userId}/${type}`));
+                const q = query(collection(db, `users/${userId}/${type}`));
                 onSnapshot(q, (snapshot) => {
                     listElement.innerHTML = '';
                     const tasksForType = [];
@@ -609,7 +604,7 @@
         }
         function loadGoals() {
             if (!userId) return;
-            const q = query(collection(db, `/artifacts/${appId}/users/${userId}/goals`));
+            const q = query(collection(db, `users/${userId}/goals`));
             onSnapshot(q, (snapshot) => {
                 goalList.innerHTML = '';
                 snapshot.forEach(doc => renderGoal({ id: doc.id, ...doc.data() }));
@@ -618,7 +613,7 @@
         function renderGoal(goal) {
             const goalCard = document.createElement('div');
             goalCard.className = 'goal-card p-6 rounded-2xl shadow-lg';
-            const milestonesCollection = collection(db, `/artifacts/${appId}/users/${userId}/goals/${goal.id}/milestones`);
+            const milestonesCollection = collection(db, `users/${userId}/goals/${goal.id}/milestones`);
             onSnapshot(milestonesCollection, (milestonesSnapshot) => {
                 const milestones = [];
                 milestonesSnapshot.forEach(doc => milestones.push({ id: doc.id, ...doc.data() }));

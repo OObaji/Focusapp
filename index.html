@@ -25,6 +25,7 @@
         /* Custom scrollbar for better aesthetics */
         ::-webkit-scrollbar {
             width: 8px;
+            height: 8px;
         }
         ::-webkit-scrollbar-track {
             background: #f1f1f1;
@@ -47,6 +48,14 @@
         }
         .hidden-view {
             display: none !important;
+        }
+        /* Utility to hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
         }
     </style>
 </head>
@@ -138,17 +147,17 @@
         </header>
 
         <!-- Main Content -->
-        <main class="container mx-auto px-0 sm:px-6 lg:px-8 py-4">
+        <main class="container mx-auto px-4 sm:px-6 py-4">
             <div class="max-w-4xl mx-auto">
                 <!-- Tasks Page -->
-                <div id="tasks-view" class="hidden-view p-4 sm:p-6 md:p-8">
-                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
-                    <div class="mb-6">
-                        <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700">
-                            <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">daily</button>
-                            <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">weekly</button>
-                            <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">monthly</button>
-                            <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">uncompleted</button>
+                <div id="tasks-view" class="hidden-view">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
+                    <div class="mb-6 overflow-hidden">
+                        <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+                            <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">daily</button>
+                            <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">weekly</button>
+                            <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">monthly</button>
+                            <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">uncompleted</button>
                         </div>
                     </div>
                     <form id="add-task-form" class="flex gap-2 mb-6">
@@ -161,9 +170,9 @@
                 </div>
 
                 <!-- Goals Page -->
-                <div id="goals-view" class="hidden-view p-4 sm:p-6 md:p-8">
+                <div id="goals-view" class="hidden-view">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">My Goals</h2>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">My Goals</h2>
                         <button id="add-goal-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
                         </button>
@@ -665,4 +674,4 @@
 
     </script>
 </body>
-</html>
+</ht

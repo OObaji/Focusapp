@@ -3,670 +3,580 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority Tracker</title>
+    <title>Task & Goal Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-        }
-        .glass-card {
-            background: rgba(31, 41, 55, 0.25);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: all 0.3s ease;
-        }
-        .glass-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
-        }
-        .nav-button {
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .nav-button.active::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 8px;
-            height: 8px;
-            background-color: #2DD4BF; /* Teal accent */
-            border-radius: 50%;
-        }
-        .task-item, .milestone-item, .goal-card {
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            opacity: 1;
-            transform: scale(1);
-        }
-        .task-item.removing, .milestone-item.removing, .goal-card.removing {
-            opacity: 0;
-            transform: scale(0.9);
-            margin-bottom: -80px; /* Adjust based on item height */
-        }
-        .progress-bar-bg {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        .progress-bar-fg {
-            background: linear-gradient(90deg, #2DD4BF, #14B8A6); /* Teal gradient */
-            transition: width 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .view-container {
-            animation: fadeIn 0.6s ease forwards;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
             width: 8px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #2DD4BF;
-            border-radius: 10px;
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #14B8A6;
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        .hidden-view {
+            display: none !important;
         }
     </style>
 </head>
-<body class="text-gray-200">
+<body class="bg-gray-100 dark:bg-gray-900 font-sans transition-colors duration-300">
 
-    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Header and Navigation -->
-        <header class="flex flex-col sm:flex-row justify-between items-center mb-10">
-            <h1 class="text-5xl font-extrabold text-white mb-4 sm:mb-0">Priority Tracker</h1>
-            <nav class="flex items-center space-x-6 text-lg font-semibold">
-                <button id="dashboard-nav" class="nav-button text-gray-300 hover:text-white">Dashboard</button>
-                <button id="priorities-nav" class="nav-button active text-gray-300 hover:text-white">Priorities</button>
-                <button id="goals-nav" class="nav-button text-gray-300 hover:text-white">Goals</button>
-            </nav>
-        </header>
-
-        <!-- Main Content -->
-        <main id="main-content">
-            <!-- Dashboard View -->
-            <div id="dashboard-view" class="hidden view-container">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <!-- Overall Progress -->
-                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Overall Progress</h3>
-                        <div class="relative w-32 h-32">
-                            <canvas id="overall-progress-chart"></canvas>
-                            <div id="overall-progress-text" class="absolute inset-0 flex items-center justify-center text-3xl font-bold text-white">0%</div>
-                        </div>
+    <!-- App Header -->
+    <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                   <div class="flex items-center gap-2 text-xl font-bold text-gray-800 dark:text-white">
+                        <i class="fa-solid fa-bullseye text-blue-500"></i>
+                        <span>Momentum</span>
                     </div>
-                    <!-- Tasks Completed -->
-                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Tasks Completed</h3>
-                        <p class="text-5xl font-bold text-white"><span id="completed-tasks-count">0</span> / <span id="total-tasks-count">0</span></p>
-                    </div>
-                    <!-- Goals Achieved -->
-                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Goals Achieved</h3>
-                        <p id="goals-achieved-count" class="text-5xl font-bold text-white">0</p>
-                    </div>
-                    <!-- Productivity Streak -->
-                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Productivity Streak</h3>
-                        <p class="text-5xl font-bold text-white"><span id="productivity-streak-count">0</span> Days</p>
+                     <div class="hidden md:flex items-center space-x-1">
+                        <button id="nav-tasks" class="px-3 py-2 rounded-md text-sm font-medium">Tasks</button>
+                        <button id="nav-goals" class="px-3 py-2 rounded-md text-sm font-medium">Goals</button>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                    <div class="glass-card p-6">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-4 text-center">Task Distribution</h3>
-                        <canvas id="task-distribution-chart"></canvas>
-                    </div>
-                    <div class="glass-card p-6">
-                        <h3 class="text-xl font-semibold text-teal-300 mb-4 text-center">Focus Areas</h3>
-                        <canvas id="focus-areas-chart"></canvas>
-                    </div>
+                 <div class="flex items-center gap-4">
+                    <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                     <div id="user-id-display" class="text-xs text-gray-400 dark:text-gray-500 hidden sm:block"></div>
                 </div>
             </div>
+             <div class="md:hidden flex items-center justify-around border-t border-gray-200 dark:border-gray-700 py-1">
+                <button id="mobile-nav-tasks" class="flex-1 py-2 text-sm font-medium">Tasks</button>
+                <button id="mobile-nav-goals" class="flex-1 py-2 text-sm font-medium">Goals</button>
+            </div>
+        </nav>
+    </header>
 
-            <!-- Priorities View -->
-            <div id="priorities-view" class="view-container">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Daily Card -->
-                     <div class="glass-card p-6">
-                        <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-sun mr-3 text-teal-300"></i>Today</h2>
-                        <div class="flex mb-4">
-                            <input type="text" id="daily-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New daily priority...">
-                            <button data-type="daily" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <ul id="daily-tasks-list" data-type="daily" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
-                    </div>
-                    <!-- Weekly Card -->
-                    <div class="glass-card p-6">
-                        <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-calendar-week mr-3 text-teal-300"></i>This Week</h2>
-                        <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4"><div id="weekly-progress-bar" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div></div>
-                        <div class="flex mb-4">
-                            <input type="text" id="weekly-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New weekly priority...">
-                            <button data-type="weekly" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <ul id="weekly-tasks-list" data-type="weekly" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
-                    </div>
-                    <!-- Monthly Card -->
-                    <div class="glass-card p-6">
-                        <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-calendar-alt mr-3 text-teal-300"></i>This Month</h2>
-                        <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4"><div id="monthly-progress-bar" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div></div>
-                        <div class="flex mb-4">
-                            <input type="text" id="monthly-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New monthly priority...">
-                            <button data-type="monthly" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <ul id="monthly-tasks-list" data-type="monthly" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
-                    </div>
-                </div>
-
-                <!-- Uncompleted & Quote -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                    <div class="glass-card p-6">
-                        <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-archive mr-3 text-gray-400"></i>Uncompleted</h2>
-                        <ul id="uncompleted-tasks-list" class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2"></ul>
-                    </div>
-                     <div class="glass-card p-6 flex flex-col justify-center items-center text-center">
-                        <h2 class="text-xl font-semibold mb-2 text-teal-300">Quote of the Day</h2>
-                        <p id="quote-text" class="text-lg italic text-gray-300">"The secret of getting ahead is getting started."</p>
-                        <p id="quote-author" class="mt-2 font-medium text-gray-400">- Mark Twain</p>
-                    </div>
-                </div>
+    <!-- Main Content -->
+    <main class="container mx-auto px-0 sm:px-6 lg:px-8 py-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Loading State -->
+            <div id="loading-view" class="flex items-center justify-center h-64">
+                <p class="text-lg text-gray-600 dark:text-gray-300">Initializing Tracker...</p>
             </div>
 
-            <!-- Goals View -->
-            <div id="goals-view" class="hidden view-container">
-                <div class="flex justify-center mb-8">
-                    <div class="glass-card p-4 flex items-center">
-                        <input type="text" id="new-goal-input" class="flex-grow bg-transparent text-lg border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="Enter a new life goal...">
-                        <button id="add-new-goal-btn" class="ml-4 bg-teal-500 text-white font-bold py-2 px-5 rounded-lg hover:bg-teal-400 transition-colors">Add Goal</button>
+            <!-- Tasks Page -->
+            <div id="tasks-view" class="hidden-view p-4 sm:p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
+                <div class="mb-6">
+                    <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700">
+                        <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">daily</button>
+                        <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">weekly</button>
+                        <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">monthly</button>
+                        <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">uncompleted</button>
                     </div>
                 </div>
-                <div id="goals-container" class="space-y-8">
-                    <!-- Goals will be rendered here -->
-                </div>
+                <form id="add-task-form" class="flex gap-2 mb-6">
+                    <input id="new-task-input" type="text" class="flex-grow p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 transition" />
+                    <button type="submit" class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add</span>
+                    </button>
+                </form>
+                <div id="task-list"></div>
             </div>
-        </main>
+
+            <!-- Goals Page -->
+            <div id="goals-view" class="hidden-view p-4 sm:p-6 md:p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">My Goals</h2>
+                    <button id="add-goal-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
+                    </button>
+                </div>
+                <div id="goal-list"></div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal for adding goals -->
+    <div id="goal-modal" class="fixed hidden inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 justify-center items-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all duration-300 ease-out scale-95">
+            <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Create a New Goal</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors rounded-full p-1">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="add-goal-form">
+                    <div class="mb-4">
+                        <label for="goal-title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Goal Title</label>
+                        <input id="goal-title" type="text" placeholder="e.g., Learn JavaScript" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="goal-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
+                        <textarea id="goal-description" placeholder="e.g., Build 3 projects to master it" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" rows="3"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="cancel-modal-btn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancel</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">Add Goal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
+
+    <!-- Firebase and App Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-priority-tracker';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // --- Firebase Initialization ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // --- App State ---
         let userId = null;
-        let userDataUnsubscribe = null;
-        let allUserData = {};
-        
-        // --- Chart Instances ---
-        let overallProgressChart, taskDistributionChart, focusAreasChart;
+        let tasks = [];
+        let goals = [];
+        let currentTaskView = 'daily';
+        let currentPage = 'tasks';
+        let tasksUnsubscribe = () => {};
+        let goalsUnsubscribe = () => {};
 
-        // --- DOM Element References ---
-        const dashboardNav = document.getElementById('dashboard-nav');
-        const prioritiesNav = document.getElementById('priorities-nav');
-        const goalsNav = document.getElementById('goals-nav');
-        const dashboardView = document.getElementById('dashboard-view');
-        const prioritiesView = document.getElementById('priorities-view');
-        const goalsView = document.getElementById('goals-view');
-        const goalsContainer = document.getElementById('goals-container');
-        const addNewGoalBtn = document.getElementById('add-new-goal-btn');
-        const newGoalInput = document.getElementById('new-goal-input');
+        // --- DOM Elements ---
+        const DOMElements = {
+            loadingView: document.getElementById('loading-view'),
+            tasksView: document.getElementById('tasks-view'),
+            goalsView: document.getElementById('goals-view'),
+            taskList: document.getElementById('task-list'),
+            goalList: document.getElementById('goal-list'),
+            addTaskForm: document.getElementById('add-task-form'),
+            newTaskInput: document.getElementById('new-task-input'),
+            taskViewButtons: document.getElementById('task-view-buttons'),
+            addGoalBtn: document.getElementById('add-goal-btn'),
+            goalModal: document.getElementById('goal-modal'),
+            closeModalBtn: document.getElementById('close-modal-btn'),
+            cancelModalBtn: document.getElementById('cancel-modal-btn'),
+            addGoalForm: document.getElementById('add-goal-form'),
+            goalTitleInput: document.getElementById('goal-title'),
+            goalDescriptionInput: document.getElementById('goal-description'),
+            navTasks: document.getElementById('nav-tasks'),
+            navGoals: document.getElementById('nav-goals'),
+            mobileNavTasks: document.getElementById('mobile-nav-tasks'),
+            mobileNavGoals: document.getElementById('mobile-nav-goals'),
+            themeToggle: document.getElementById('theme-toggle'),
+            userIdDisplay: document.getElementById('user-id-display'),
+        };
 
-        // --- Authentication ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                setupListeners();
-                checkAndPerformResets();
-                fetchQuote();
-            } else {
-                try {
-                    if (typeof __initial_auth_token !== 'undefined') { await signInWithCustomToken(auth, __initial_auth_token); } 
-                    else { await signInAnonymously(auth); }
-                } catch (error) { console.error("Error during sign-in:", error); }
-            }
-        });
+        // --- Render Functions ---
 
-        // --- Navigation ---
-        function switchView(viewToShow) {
-            dashboardView.classList.toggle('hidden', viewToShow !== 'dashboard');
-            prioritiesView.classList.toggle('hidden', viewToShow !== 'priorities');
-            goalsView.classList.toggle('hidden', viewToShow !== 'goals');
-            dashboardNav.classList.toggle('active', viewToShow === 'dashboard');
-            prioritiesNav.classList.toggle('active', viewToShow === 'priorities');
-            goalsNav.classList.toggle('active', viewToShow === 'goals');
-        }
-        dashboardNav.addEventListener('click', () => switchView('dashboard'));
-        prioritiesNav.addEventListener('click', () => switchView('priorities'));
-        goalsNav.addEventListener('click', () => switchView('goals'));
-        
-        // Set initial view
-        switchView('priorities');
-
-        // --- Data Listener ---
-        function setupListeners() {
-            if (!userId) return;
-            if (userDataUnsubscribe) userDataUnsubscribe();
-
-            const userDocRef = doc(db, "artifacts", appId, "users", userId);
-            userDataUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    allUserData = docSnap.data();
-                    renderAll();
-                } else {
-                    const initialData = {
-                        dailyTasks: [], weeklyTasks: [], monthlyTasks: [], uncompletedTasks: [],
-                        goals: [],
-                        lastReset: {
-                            daily: new Date().toISOString().split('T')[0],
-                            weekly: getWeekNumber(new Date()),
-                            monthly: new Date().getMonth()
-                        },
-                        streak: { count: 0, lastCompletionDate: null }
-                    };
-                    setDoc(userDocRef, initialData).then(() => {
-                        allUserData = initialData;
-                        renderAll();
-                    });
-                }
-            });
-        }
-
-        // --- Main Render Function ---
-        function renderAll() {
-            renderTasks('daily', allUserData.dailyTasks || []);
-            renderTasks('weekly', allUserData.weeklyTasks || []);
-            renderTasks('monthly', allUserData.monthlyTasks || []);
-            renderTasks('uncompleted', allUserData.uncompletedTasks || []);
-            renderGoals(allUserData.goals || []);
-            updateAllProgressBars();
-            updateDashboard();
-        }
-
-        // --- Task Rendering & Logic ---
-        function renderTasks(type, tasks) {
-            const listElement = document.getElementById(`${type}-tasks-list`);
-            if (!listElement) return;
-            listElement.innerHTML = tasks.map(task => `
-                <li class="task-item flex items-center justify-between p-3 rounded-lg bg-white/5" data-id="${task.id}">
-                    <div class="flex items-center flex-grow">
-                        <input type="checkbox" ${task.completed ? 'checked' : ''} class="task-checkbox h-5 w-5 rounded-full border-2 bg-transparent border-white/50 text-teal-400 focus:ring-0 focus:ring-offset-0 cursor-pointer">
-                        <span class="ml-4 text-lg ${task.completed ? 'line-through text-gray-400' : ''}">${task.text}</span>
-                    </div>
-                    ${type !== 'uncompleted' ? `<button class="delete-task-btn text-gray-500 hover:text-red-400 transition-colors text-xl"><i class="fas fa-trash-alt"></i></button>` : ''}
-                </li>
-            `).join('');
-        }
-        
-        async function updateTasks(type, updatedTasks, completedTaskId = null) {
-            const userDocRef = doc(db, "artifacts", appId, "users", userId);
-            const updateData = { [`${type}Tasks`]: updatedTasks };
-
-            if (completedTaskId) {
-                const today = new Date().toISOString().split('T')[0];
-                const streak = allUserData.streak || { count: 0, lastCompletionDate: null };
-                const lastDate = streak.lastCompletionDate;
-
-                if (lastDate !== today) {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
-                    
-                    if (lastDate === yesterdayStr) {
-                        streak.count++;
-                    } else {
-                        streak.count = 1;
-                    }
-                    streak.lastCompletionDate = today;
-                    updateData.streak = streak;
-                }
-            }
-            await updateDoc(userDocRef, updateData);
-        }
-
-        function addTask(type) {
-            const input = document.getElementById(`${type}-task-input`);
-            const text = input.value.trim();
-            if (text === '') return;
-            const newTask = { id: crypto.randomUUID(), text, completed: false };
-            updateTasks(type, [...(allUserData[`${type}Tasks`] || []), newTask]);
-            input.value = '';
-        }
-
-        // --- Event Delegation for Tasks ---
-        prioritiesView.addEventListener('click', (e) => {
-            const target = e.target;
-            const addBtn = target.closest('.add-task-btn');
-            if (addBtn) {
-                addTask(addBtn.dataset.type);
+        const renderTasks = () => {
+            const filteredTasks = filterTasks(tasks, currentTaskView);
+            DOMElements.taskList.innerHTML = '';
+            if (filteredTasks.length === 0) {
+                DOMElements.taskList.innerHTML = `<div class="text-center py-10 px-4 bg-gray-50 dark:bg-gray-800 rounded-lg"><p class="text-gray-500 dark:text-gray-400">No ${currentTaskView} tasks here.</p></div>`;
                 return;
             }
-            const taskItem = target.closest('.task-item');
-            if (!taskItem) return;
-            const taskList = taskItem.closest('.task-list');
-            if (!taskList) return;
-
-            const taskId = taskItem.dataset.id;
-            const taskType = taskList.dataset.type;
-
-            if (target.matches('.task-checkbox')) {
-                const updatedTasks = (allUserData[`${taskType}Tasks`] || []).map(task => 
-                    task.id === taskId ? { ...task, completed: target.checked } : task
-                );
-                updateTasks(taskType, updatedTasks, target.checked ? taskId : null);
-            } else if (target.closest('.delete-task-btn')) {
-                taskItem.classList.add('removing');
-                setTimeout(() => {
-                    const updatedTasks = (allUserData[`${taskType}Tasks`] || []).filter(task => task.id !== taskId);
-                    updateTasks(taskType, updatedTasks);
-                }, 400);
+            filteredTasks.forEach(task => DOMElements.taskList.innerHTML += createTaskItemHTML(task));
+        };
+        
+        const renderGoals = () => {
+            DOMElements.goalList.innerHTML = '';
+            if (goals.length === 0) {
+                DOMElements.goalList.innerHTML = `<div class="text-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                    <i class="fa-solid fa-bullseye text-5xl mx-auto text-gray-400 dark:text-gray-500"></i>
+                    <h3 class="mt-4 text-xl font-semibold text-gray-800 dark:text-white">No Goals Yet</h3>
+                    <p class="mt-1 text-gray-500 dark:text-gray-400">Click 'New Goal' to set your ambitions.</p>
+                </div>`;
+                return;
             }
-        });
+            goals.forEach(goal => DOMElements.goalList.innerHTML += createGoalCardHTML(goal));
+        };
 
-        ['daily', 'weekly', 'monthly'].forEach(type => {
-            document.getElementById(`${type}-task-input`).addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(type); });
-        });
+        const createTaskItemHTML = (task) => {
+            const isUncompleted = currentTaskView === 'uncompleted';
+            const timestamp = new Date(task.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const completedClass = task.isCompleted && !isUncompleted ? 'line-through text-gray-500 dark:text-gray-400' : '';
+            const checkIcon = task.isCompleted ? '<i class="fa-solid fa-circle-check text-green-500 text-2xl"></i>' : '<i class="fa-regular fa-circle text-gray-400 text-2xl"></i>';
 
-        // --- Goal & Milestone Rendering & Logic ---
-        function renderGoals(goals = []) {
-            goalsContainer.innerHTML = goals.map(goal => `
-                <div class="goal-card glass-card p-6" data-goal-id="${goal.id}">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-2xl font-bold text-white">${goal.text}</h3>
-                        <button class="delete-goal-btn text-gray-500 hover:text-red-400 transition-colors text-xl"><i class="fas fa-trash-alt"></i></button>
+            return `
+                <div class="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 mb-3">
+                    <div class="flex items-center gap-4 flex-grow">
+                        ${!isUncompleted ? `<button data-action="toggle" data-id="${task.id}" class="focus:outline-none">${checkIcon}</button>` : '<i class="fa-solid fa-archive text-gray-400 text-xl flex-shrink-0"></i>'}
+                        <div class="flex-grow">
+                            <span class="text-gray-800 dark:text-gray-200 ${completedClass}">${task.text}</span>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                <i class="fa-solid fa-clock text-xs"></i> ${isUncompleted ? 'Overdue from:' : 'Created:'} ${timestamp}
+                            </p>
+                        </div>
                     </div>
-                    <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
-                        <div id="milestone-progress-${goal.id}" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div>
+                    <button data-action="delete" data-id="${task.id}" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full flex-shrink-0 ml-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        };
+        
+        const createGoalCardHTML = (goal) => {
+            const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
+            const progress = goal.milestones.length > 0 ? (completedMilestones / goal.milestones.length) * 100 : 0;
+            const timestamp = new Date(goal.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            const milestonesHTML = goal.milestones.map(createMilestoneItemHTML).join('');
+
+            return `
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6" data-goal-id="${goal.id}">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fa-solid fa-bullseye text-blue-500"></i> ${goal.title}</h3>
+                            <p class="text-gray-600 dark:text-gray-400 mt-1">${goal.description}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1"><i class="fa-solid fa-clock text-xs"></i> Goal set on: ${timestamp}</p>
+                        </div>
+                        <button data-action="delete-goal" data-id="${goal.id}" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
-                    <ul class="milestones-list space-y-3 mb-4 custom-scrollbar max-h-48 overflow-y-auto pr-2">
-                        ${(goal.milestones || []).map(m => `
-                            <li class="milestone-item flex items-center justify-between p-2 rounded-lg bg-white/5" data-milestone-id="${m.id}">
-                                <div class="flex items-center flex-grow">
-                                    <input type="checkbox" ${m.completed ? 'checked' : ''} class="milestone-checkbox h-5 w-5 rounded-full border-2 bg-transparent border-white/50 text-teal-400 focus:ring-0 focus:ring-offset-0 cursor-pointer">
-                                    <span class="ml-4 ${m.completed ? 'line-through text-gray-400' : ''}">${m.text}</span>
-                                </div>
-                                <button class="delete-milestone-btn text-gray-500 hover:text-red-400 transition-colors"><i class="fas fa-trash-alt"></i></button>
-                            </li>
-                        `).join('')}
-                    </ul>
-                    <div class="flex mt-4">
-                        <input type="text" class="add-milestone-input flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New milestone...">
-                        <button class="add-milestone-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
+                    <div class="mt-4">
+                        <div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-600 dark:text-gray-300">Progress</span><span class="text-sm font-bold text-blue-500">${Math.round(progress)}%</span></div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5"><div class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: ${progress}%"></div></div>
+                    </div>
+                    <div class="mt-6">
+                        <h4 class="font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2"><i class="fa-solid fa-flag"></i> Milestones</h4>
+                        <div class="milestone-list">${milestonesHTML.length > 0 ? milestonesHTML : `<p class="text-sm text-gray-500 dark:text-gray-400 italic">No milestones yet. Add one below.</p>`}</div>
+                        <form class="add-milestone-form flex gap-2 mt-3">
+                            <input type="text" placeholder="Add a new milestone..." class="new-milestone-input flex-grow p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-sm">
+                            <button type="submit" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"><i class="fa-solid fa-plus"></i></button>
+                        </form>
                     </div>
                 </div>
-            `).join('');
-        }
+            `;
+        };
+
+        const createMilestoneItemHTML = (milestone) => {
+            const completedClass = milestone.isCompleted ? 'line-through text-gray-500' : '';
+            const checkIcon = milestone.isCompleted ? '<i class="fa-solid fa-circle-check text-green-500 text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-400 text-xl"></i>';
+            return `
+                <div class="flex items-center justify-between pl-4 pr-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 mb-2">
+                    <div class="flex items-center gap-3">
+                        <button data-action="toggle-milestone" data-id="${milestone.id}">${checkIcon}</button>
+                        <span class="text-sm text-gray-700 dark:text-gray-300 ${completedClass}">${milestone.text}</span>
+                    </div>
+                    <button data-action="delete-milestone" data-id="${milestone.id}" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                </div>
+            `;
+        };
         
-        async function updateGoals(updatedGoals) {
-            const userDocRef = doc(db, "artifacts", appId, "users", userId);
-            await updateDoc(userDocRef, { goals: updatedGoals });
-        }
-
-        // --- Event Delegation for Goals ---
-        addNewGoalBtn.addEventListener('click', () => {
-            const text = newGoalInput.value.trim();
-            if (text === '') return;
-            const newGoal = { id: crypto.randomUUID(), text, milestones: [] };
-            updateGoals([...(allUserData.goals || []), newGoal]);
-            newGoalInput.value = '';
-        });
-        newGoalInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addNewGoalBtn.click(); });
-
-        goalsContainer.addEventListener('click', (e) => {
-            const target = e.target;
-            const goalCard = target.closest('.goal-card');
-            if (!goalCard) return;
-            const goalId = goalCard.dataset.goalId;
-
-            if (target.closest('.delete-goal-btn')) {
-                goalCard.classList.add('removing');
-                setTimeout(() => {
-                    const updatedGoals = (allUserData.goals || []).filter(g => g.id !== goalId);
-                    updateGoals(updatedGoals);
-                }, 400);
-                return;
-            }
-
-            if (target.closest('.add-milestone-btn')) {
-                const inputElement = goalCard.querySelector('.add-milestone-input');
-                const text = inputElement.value.trim();
-                if (text === '') return;
-                const newMilestone = { id: crypto.randomUUID(), text, completed: false };
-                const updatedGoals = (allUserData.goals || []).map(g => 
-                    g.id === goalId ? { ...g, milestones: [...(g.milestones || []), newMilestone] } : g
-                );
-                updateGoals(updatedGoals);
-                inputElement.value = '';
-                return;
-            }
-
-            const milestoneItem = target.closest('.milestone-item');
-            if (!milestoneItem) return;
-            const milestoneId = milestoneItem.dataset.milestoneId;
-
-            if (target.matches('.milestone-checkbox')) {
-                const updatedGoals = (allUserData.goals || []).map(g => {
-                    if (g.id === goalId) {
-                        const updatedMilestones = (g.milestones || []).map(m => m.id === milestoneId ? { ...m, completed: target.checked } : m);
-                        return { ...g, milestones: updatedMilestones };
-                    }
-                    return g;
-                });
-                updateGoals(updatedGoals);
-            }
-            else if (target.closest('.delete-milestone-btn')) {
-                milestoneItem.classList.add('removing');
-                setTimeout(() => {
-                    const updatedGoals = (allUserData.goals || []).map(g => {
-                        if (g.id === goalId) {
-                            const updatedMilestones = (g.milestones || []).filter(m => m.id !== milestoneId);
-                            return { ...g, milestones: updatedMilestones };
-                        }
-                        return g;
-                    });
-                    updateGoals(updatedGoals);
-                }, 400);
-            }
-        });
-
-        goalsContainer.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && e.target.matches('.add-milestone-input')) {
-                e.target.nextElementSibling.click();
-            }
-        });
-
-        // --- Progress & Reset ---
-        function updateAllProgressBars() {
-            ['weekly', 'monthly'].forEach(type => {
-                const tasks = allUserData[`${type}Tasks`] || [];
-                const percentage = tasks.length > 0 ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0;
-                const progressBar = document.getElementById(`${type}-progress-bar`);
-                if(progressBar) progressBar.style.width = `${percentage}%`;
-            });
-            (allUserData.goals || []).forEach(goal => {
-                const milestones = goal.milestones || [];
-                const percentage = milestones.length > 0 ? (milestones.filter(m => m.completed).length / milestones.length) * 100 : 0;
-                const progressBar = document.getElementById(`milestone-progress-${goal.id}`);
-                if (progressBar) progressBar.style.width = `${percentage}%`;
-            });
-        }
+        // --- Firestore Logic ---
         
-        function getWeekNumber(d) {
-            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
-            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-        }
+        const getTasksCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/tasks`);
+        const getGoalsCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/goals`);
+        const getMilestonesCollection = (goalId) => collection(db, `/artifacts/${appId}/users/${userId}/goals/${goalId}/milestones`);
 
-        async function checkAndPerformResets() {
-            if (!userId) return;
-            const userDocRef = doc(db, "artifacts", appId, "users", userId);
-            const docSnap = await getDoc(userDocRef);
-            if (!docSnap.exists()) return;
+        const handleAddTask = async (e) => {
+            e.preventDefault();
+            const text = DOMElements.newTaskInput.value.trim();
+            if (text === '' || currentTaskView === 'uncompleted') return;
+            await addDoc(getTasksCollection(), { text, frequency: currentTaskView, isCompleted: false, createdAt: new Date().toISOString() });
+            DOMElements.newTaskInput.value = '';
+        };
 
-            const data = docSnap.data();
-            const lastReset = data.lastReset || {};
+        const handleToggleTask = async (id) => {
+            const task = tasks.find(t => t.id === id);
+            if (task) await updateDoc(doc(getTasksCollection(), id), { isCompleted: !task.isCompleted });
+        };
+        
+        const handleDeleteTask = async (id) => {
+            await deleteDoc(doc(getTasksCollection(), id));
+        };
+        
+        const handleAddGoal = async (e) => {
+            e.preventDefault();
+            const title = DOMElements.goalTitleInput.value.trim();
+            const description = DOMElements.goalDescriptionInput.value.trim();
+            if (title === '') return;
+            await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString() });
+            DOMElements.addGoalForm.reset();
+            toggleModal(false);
+        };
+        
+        const handleDeleteGoal = async (goalId) => {
+            const milestonesSnapshot = await getDocs(getMilestonesCollection(goalId));
+            const deletePromises = milestonesSnapshot.docs.map(d => deleteDoc(d.ref));
+            await Promise.all(deletePromises);
+            await deleteDoc(doc(getGoalsCollection(), goalId));
+        };
+        
+        const handleAddMilestone = async (goalId, text) => {
+            // First, add the document to Firestore.
+            const newDocRef = await addDoc(getMilestonesCollection(goalId), { text, isCompleted: false, createdAt: new Date().toISOString() });
+            
+            // Second, manually update the local `goals` array for an instant UI refresh.
+            const goalIndex = goals.findIndex(g => g.id === goalId);
+            if (goalIndex !== -1) {
+                const newMilestone = {
+                    id: newDocRef.id,
+                    text: text,
+                    isCompleted: false,
+                    createdAt: new Date().toISOString()
+                };
+                goals[goalIndex].milestones.push(newMilestone);
+                goals[goalIndex].milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+                
+                // Finally, re-render the goals list with the new data.
+                renderGoals();
+            }
+        };
+        
+        const handleToggleMilestone = async (goalId, milestoneId) => {
+            const goal = goals.find(g => g.id === goalId);
+            const milestone = goal?.milestones.find(m => m.id === milestoneId);
+            if (milestone) {
+                const newCompletedState = !milestone.isCompleted;
+                // Update Firestore first.
+                await updateDoc(doc(getMilestonesCollection(goalId), milestoneId), { isCompleted: newCompletedState });
+                
+                // Then, update local state and re-render for instant feedback.
+                milestone.isCompleted = newCompletedState;
+                renderGoals();
+            }
+        };
+        
+        const handleDeleteMilestone = async (goalId, milestoneId) => {
+            // Delete from Firestore first.
+            await deleteDoc(doc(getMilestonesCollection(goalId), milestoneId));
+            
+            // Then, update local state and re-render.
+            const goalIndex = goals.findIndex(g => g.id === goalId);
+            if (goalIndex !== -1) {
+                goals[goalIndex].milestones = goals[goalIndex].milestones.filter(m => m.id !== milestoneId);
+                renderGoals();
+            }
+        };
+
+        // --- Utility & Event Handlers ---
+        
+        const filterTasks = (tasksToFilter, view) => {
             const now = new Date();
-            const today = now.toISOString().split('T')[0];
-            const currentWeek = getWeekNumber(now);
-            const currentMonth = now.getMonth();
+            if (view === 'uncompleted') return tasksToFilter.filter(t => t.frequency === 'uncompleted').sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             
-            const batch = writeBatch(db);
-            let needsUpdate = false;
-            let uncompletedTasks = data.uncompletedTasks || [];
-
-            if (lastReset.daily !== today) {
-                uncompletedTasks.push(...(data.dailyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'daily'})));
-                batch.update(userDocRef, { dailyTasks: [], "lastReset.daily": today });
-                needsUpdate = true;
+            const activeTasks = tasksToFilter.filter(t => t.frequency === view);
+            switch (view) {
+                case 'daily': return activeTasks.filter(t => new Date(t.createdAt).toDateString() === now.toDateString());
+                case 'weekly': {
+                    const startOfWeek = new Date(now);
+                    startOfWeek.setDate(now.getDate() - now.getDay());
+                    startOfWeek.setHours(0, 0, 0, 0);
+                    const endOfWeek = new Date(startOfWeek);
+                    endOfWeek.setDate(startOfWeek.getDate() + 6);
+                    endOfWeek.setHours(23, 59, 59, 999);
+                    return activeTasks.filter(t => new Date(t.createdAt) >= startOfWeek && new Date(t.createdAt) <= endOfWeek);
+                }
+                case 'monthly': return activeTasks.filter(t => new Date(t.createdAt).getMonth() === now.getMonth() && new Date(t.createdAt).getFullYear() === now.getFullYear());
+                default: return [];
             }
-            if (lastReset.weekly !== currentWeek) {
-                uncompletedTasks.push(...(data.weeklyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'weekly'})));
-                batch.update(userDocRef, { weeklyTasks: [], "lastReset.weekly": currentWeek });
-                needsUpdate = true;
-            }
-            if (lastReset.monthly !== currentMonth) {
-                uncompletedTasks.push(...(data.monthlyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'monthly'})));
-                batch.update(userDocRef, { monthlyTasks: [], "lastReset.monthly": currentMonth });
-                needsUpdate = true;
-            }
+        };
 
-            if (needsUpdate) {
-                batch.update(userDocRef, { uncompletedTasks: uncompletedTasks });
-                await batch.commit();
-            }
-        }
+        const archiveUncompletedTasks = async () => {
+             const q = query(getTasksCollection());
+            const querySnapshot = await getDocs(q);
+            const allTasks = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // --- Dashboard Logic ---
-        function updateDashboard() {
-            const { dailyTasks = [], weeklyTasks = [], monthlyTasks = [], goals = [], streak = { count: 0 } } = allUserData;
-            const allTasks = [...dailyTasks, ...weeklyTasks, ...monthlyTasks];
-            
-            const completedTasks = allTasks.filter(t => t.completed).length;
-            const totalTasks = allTasks.length;
-            const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            document.getElementById('completed-tasks-count').textContent = completedTasks;
-            document.getElementById('total-tasks-count').textContent = totalTasks;
-            document.getElementById('overall-progress-text').textContent = `${overallProgress}%`;
-
-            const goalsAchieved = goals.filter(g => (g.milestones || []).length > 0 && (g.milestones || []).every(m => m.completed)).length;
-            document.getElementById('goals-achieved-count').textContent = goalsAchieved;
-            
-            document.getElementById('productivity-streak-count').textContent = streak.count;
-
-            updateCharts(allTasks, dailyTasks, weeklyTasks, monthlyTasks);
-        }
-
-        function updateCharts(allTasks, daily, weekly, monthly) {
-            const completed = allTasks.filter(t => t.completed).length;
-            const pending = allTasks.length - completed;
-
-            // Overall Progress Chart
-            const opcCtx = document.getElementById('overall-progress-chart').getContext('2d');
-            if(overallProgressChart) overallProgressChart.destroy();
-            overallProgressChart = new Chart(opcCtx, {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [completed, pending],
-                        backgroundColor: ['#2DD4BF', 'rgba(255, 255, 255, 0.1)'],
-                        borderWidth: 0,
-                        cutout: '80%'
-                    }]
-                },
-                options: { plugins: { tooltip: { enabled: false } } }
+            const tasksToUpdate = allTasks.filter(task => {
+                if (task.isCompleted || task.frequency === 'uncompleted') return false;
+                const taskDate = new Date(task.createdAt);
+                if (task.frequency === 'daily' && taskDate < today) return true;
+                if (task.frequency === 'weekly' && taskDate < startOfWeek) return true;
+                if (task.frequency === 'monthly' && taskDate < startOfMonth) return true;
+                return false;
             });
 
-            // Task Distribution Chart
-            const tdcCtx = document.getElementById('task-distribution-chart').getContext('2d');
-            if(taskDistributionChart) taskDistributionChart.destroy();
-            taskDistributionChart = new Chart(tdcCtx, {
-                type: 'pie',
-                data: {
-                    labels: ['Completed', 'Pending'],
-                    datasets: [{
-                        data: [completed, pending],
-                        backgroundColor: ['#14B8A6', '#374151'],
-                        borderColor: '#1F2937',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { position: 'top', labels: { color: '#D1D5DB' } } }
+            if (tasksToUpdate.length > 0) {
+                const updatePromises = tasksToUpdate.map(t => updateDoc(doc(getTasksCollection(), t.id), { frequency: 'uncompleted' }));
+                await Promise.all(updatePromises);
+            }
+        };
+        
+        const switchPage = (page) => {
+            currentPage = page;
+            DOMElements.tasksView.classList.toggle('hidden-view', page !== 'tasks');
+            DOMElements.goalsView.classList.toggle('hidden-view', page !== 'goals');
+            updateNavStyles();
+        };
+
+        const updateNavStyles = () => {
+            const activeClass = 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300';
+            const inactiveClass = 'text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+            const mobileActiveClass = 'text-blue-600 dark:text-blue-400';
+            const mobileInactiveClass = 'text-gray-500 dark:text-gray-300';
+
+            DOMElements.navTasks.className = `px-3 py-2 rounded-md text-sm font-medium ${currentPage === 'tasks' ? activeClass : inactiveClass}`;
+            DOMElements.navGoals.className = `px-3 py-2 rounded-md text-sm font-medium ${currentPage === 'goals' ? activeClass : inactiveClass}`;
+            DOMElements.mobileNavTasks.className = `flex-1 py-2 text-sm font-medium ${currentPage === 'tasks' ? mobileActiveClass : mobileInactiveClass}`;
+            DOMElements.mobileNavGoals.className = `flex-1 py-2 text-sm font-medium ${currentPage === 'goals' ? mobileActiveClass : mobileInactiveClass}`;
+        };
+        
+        const updateTaskViewStyles = () => {
+            document.querySelectorAll('.task-view-btn').forEach(btn => {
+                btn.classList.toggle('border-b-2', btn.dataset.view === currentTaskView);
+                btn.classList.toggle('border-blue-500', btn.dataset.view === currentTaskView);
+                btn.classList.toggle('text-blue-500', btn.dataset.view === currentTaskView);
+                btn.classList.toggle('text-gray-500', btn.dataset.view !== currentTaskView);
+            });
+            DOMElements.newTaskInput.placeholder = `Add a new ${currentTaskView} task...`;
+            DOMElements.addTaskForm.classList.toggle('hidden', currentTaskView === 'uncompleted');
+        };
+
+        const toggleModal = (show) => {
+            DOMElements.goalModal.classList.toggle('hidden', !show);
+            DOMElements.goalModal.classList.toggle('flex', show);
+        };
+        
+        const handleThemeToggle = () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            DOMElements.themeToggle.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        };
+        
+        const setupEventListeners = () => {
+            DOMElements.addTaskForm.addEventListener('submit', handleAddTask);
+            DOMElements.addGoalForm.addEventListener('submit', handleAddGoal);
+            DOMElements.addGoalBtn.addEventListener('click', () => toggleModal(true));
+            DOMElements.closeModalBtn.addEventListener('click', () => toggleModal(false));
+            DOMElements.cancelModalBtn.addEventListener('click', () => toggleModal(false));
+            DOMElements.themeToggle.addEventListener('click', handleThemeToggle);
+            
+            [DOMElements.navTasks, DOMElements.mobileNavTasks].forEach(btn => btn.addEventListener('click', () => switchPage('tasks')));
+            [DOMElements.navGoals, DOMElements.mobileNavGoals].forEach(btn => btn.addEventListener('click', () => switchPage('goals')));
+
+            DOMElements.taskViewButtons.addEventListener('click', (e) => {
+                if (e.target.matches('.task-view-btn')) {
+                    currentTaskView = e.target.dataset.view;
+                    updateTaskViewStyles();
+                    renderTasks();
                 }
             });
 
-            // Focus Areas Chart
-            const facCtx = document.getElementById('focus-areas-chart').getContext('2d');
-            if(focusAreasChart) focusAreasChart.destroy();
-            focusAreasChart = new Chart(facCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['Daily', 'Weekly', 'Monthly'],
-                    datasets: [{
-                        label: 'Total Tasks',
-                        data: [daily.length, weekly.length, monthly.length],
-                        backgroundColor: ['#2DD4BF', '#14B8A6', '#0D9488'],
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { ticks: { color: '#9CA3AF', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        x: { ticks: { color: '#D1D5DB' }, grid: { display: false } }
+            DOMElements.taskList.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const { action, id } = button.dataset;
+                if (action === 'toggle') handleToggleTask(id);
+                if (action === 'delete') handleDeleteTask(id);
+            });
+            
+            DOMElements.goalList.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const { action, id } = button.dataset;
+                const goalCard = e.target.closest('[data-goal-id]');
+                const goalId = goalCard?.dataset.goalId;
+
+                if (action === 'delete-goal') handleDeleteGoal(id);
+                if (action === 'toggle-milestone') handleToggleMilestone(goalId, id);
+                if (action === 'delete-milestone') handleDeleteMilestone(goalId, id);
+            });
+
+            DOMElements.goalList.addEventListener('submit', (e) => {
+                if (e.target.matches('.add-milestone-form')) {
+                    e.preventDefault();
+                    const goalId = e.target.closest('[data-goal-id]').dataset.goalId;
+                    const input = e.target.querySelector('.new-milestone-input');
+                    const text = input.value.trim();
+                    if (text) {
+                        handleAddMilestone(goalId, text);
+                        input.value = '';
                     }
                 }
             });
-        }
+        };
+        
+        const initApp = async (user) => {
+            userId = user.uid;
+            DOMElements.userIdDisplay.textContent = `User ID: ${userId}`;
+            DOMElements.loadingView.classList.add('hidden-view');
+            switchPage('tasks');
+            
+            await archiveUncompletedTasks();
 
+            tasksUnsubscribe = onSnapshot(query(getTasksCollection()), (snapshot) => {
+                tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (currentPage === 'tasks') renderTasks();
+            });
 
-        // --- Motivational Quote ---
-        const localQuotes = [
-            { content: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-            { content: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
-            { content: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
-            { content: "Everything you’ve ever wanted is on the other side of fear.", author: "George Addair" },
-            { content: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" }
-        ];
+            goalsUnsubscribe = onSnapshot(query(getGoalsCollection()), async (snapshot) => {
+                goals = await Promise.all(snapshot.docs.map(async (goalDoc) => {
+                    const milestonesSnapshot = await getDocs(getMilestonesCollection(goalDoc.id));
+                    const milestones = milestonesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    return { id: goalDoc.id, ...goalDoc.data(), milestones };
+                }));
+                if (currentPage === 'goals') renderGoals();
+            });
+            
+            updateTaskViewStyles();
+        };
 
-        async function fetchQuote() {
-            try {
-                const response = await fetch("https://api.quotable.io/random?tags=inspirational|wisdom|success");
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                document.getElementById('quote-text').textContent = `"${data.content}"`;
-                document.getElementById('quote-author').textContent = `- ${data.author}`;
-            } catch (error) {
-                console.error("Quote fetch error, falling back to local quotes:", error);
-                const randomQuote = localQuotes[Math.floor(Math.random() * localQuotes.length)];
-                document.getElementById('quote-text').textContent = `"${randomQuote.content}"`;
-                document.getElementById('quote-author').textContent = `- ${randomQuote.author}`;
+        // --- App Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            // Setup theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
             }
-        }
+            DOMElements.themeToggle.innerHTML = document.documentElement.classList.contains('dark') ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+            
+            setupEventListeners();
+            
+            // Setup auth
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    initApp(user);
+                } else {
+                    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    const authPromise = initialToken ? signInWithCustomToken(auth, initialToken) : signInAnonymously(auth);
+                    authPromise.catch(err => {
+                        console.error("Auth failed, falling back to anonymous", err);
+                        if (initialToken) return signInAnonymously(auth);
+                    });
+                }
+            });
+        });
+
     </script>
 </body>
 </html>

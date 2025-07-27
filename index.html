@@ -3,715 +3,669 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority Dashboard</title>
+    <title>Priority Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: 'Lexend', sans-serif;
-            background-color: #111827; 
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
         }
-        #app-container {
-             background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        .glass-card {
+            background: rgba(31, 41, 55, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s ease;
         }
-        #landing-page {
-            background-color: #000000;
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
         }
-        #landing-canvas {
+        .nav-button {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .nav-button.active::after {
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background-color: #2DD4BF; /* Teal accent */
+            border-radius: 50%;
         }
-        .task-item:hover .delete-btn, .milestone-item:hover .delete-btn {
+        .task-item, .milestone-item, .goal-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             opacity: 1;
-            transform: scale(1.1) translateX(0);
+            transform: scale(1);
         }
-        .task-item .delete-btn, .milestone-item .delete-btn {
+        .task-item.removing, .milestone-item.removing, .goal-card.removing {
             opacity: 0;
-            transform: translateX(5px);
-            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transform: scale(0.9);
+            margin-bottom: -80px; /* Adjust based on item height */
         }
-        .task-text.completed, .milestone-text.completed {
-            text-decoration: line-through;
-            color: #6b7280;
+        .progress-bar-bg {
+            background-color: rgba(255, 255, 255, 0.1);
         }
-        .task-item {
-            transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-            border-left-width: 4px;
-        }
-        .task-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        .progress-bar-fg {
+            background: linear-gradient(90deg, #2DD4BF, #14B8A6); /* Teal gradient */
+            transition: width 0.5s ease-in-out;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .fade-in {
-            animation: fadeIn 0.6s ease-out forwards;
+        .view-container {
+            animation: fadeIn 0.6s ease forwards;
         }
-        .dashboard-card, .goal-card, .pomodoro-container {
-             background: rgba(31, 41, 55, 0.5);
-             backdrop-filter: blur(10px);
-             border: 1px solid rgba(255, 255, 255, 0.1);
-             transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
         }
-        .dashboard-card:hover, .goal-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
         }
-        .title-gradient {
-            background: -webkit-linear-gradient(45deg, #3b82f6, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2DD4BF;
+            border-radius: 10px;
         }
-        .task-item-daily { border-color: #3b82f6; }
-        .task-item-weekly { border-color: #16a34a; }
-        .task-item-monthly { border-color: #8b5cf6; }
-
-        /* Custom Checkbox */
-        .custom-checkbox {
-            -webkit-appearance: none; appearance: none; background-color: #374151; margin: 0;
-            font: inherit; color: currentColor; width: 1.25em; height: 1.25em;
-            border: 0.15em solid #4b5563; border-radius: 0.25em;
-            transform: translateY(-0.075em); display: grid; place-content: center;
-            cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;
-        }
-        .custom-checkbox::before {
-            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
-            transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em #ffffff;
-            transform-origin: bottom left; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-        }
-        .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        .custom-checkbox:checked::before { transform: scale(1); }
-        
-        /* Nav styling */
-        .nav-link {
-            transition: color 0.2s ease-in-out, border-bottom-color 0.2s ease-in-out;
-            border-bottom: 2px solid transparent;
-            color: #d1d5db;
-        }
-        .nav-link.active {
-            color: #60a5fa;
-            border-bottom-color: #60a5fa;
-        }
-        .nav-link:hover { color: #60a5fa; }
-        
-        /* Modal */
-        .modal { transition: opacity 0.25s ease; }
-        .modal-content { transition: transform 0.25s ease; }
-        
-        /* Pomodoro Timer */
-        .timer-progress-circle {
-            transition: stroke-dashoffset 1s linear;
-            transform: rotate(-90deg);
-            transform-origin: 50% 50%;
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #14B8A6;
         }
     </style>
 </head>
-<body class="text-gray-300">
-    <!-- Landing Page -->
-    <div id="landing-page" class="min-h-screen flex items-center justify-center text-center px-4 relative overflow-hidden">
-        <canvas id="landing-canvas"></canvas>
-        <div class="relative z-10">
-            <h1 class="text-6xl md:text-8xl font-bold text-white mb-4">Priority</h1>
-            <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">The smart to-do list that organizes your life, so you don't have to.</p>
-            <button id="get-started-btn" class="bg-blue-600 text-white font-bold py-4 px-10 rounded-full text-lg hover:bg-blue-700 transition-transform transform hover:scale-105 shadow-lg">Get Started</button>
-        </div>
-    </div>
+<body class="text-gray-200">
 
-    <!-- Main App Container -->
-    <div id="app-container" class="hidden min-h-screen">
-        <div class="container mx-auto max-w-7xl px-4 py-8">
-            <header class="text-center mb-6 fade-in">
-                <h1 class="text-5xl md:text-6xl font-bold title-gradient">Priority Dashboard</h1>
-                <p class="text-lg text-gray-400 mt-3">Your creative space for productivity.</p>
-            </header>
-
-            <nav class="flex justify-center space-x-4 md:space-x-8 mb-8 border-b border-gray-700 pb-2">
-                <button id="nav-dashboard" class="nav-link text-lg font-semibold py-2 px-4 active">Dashboard</button>
-                <button id="nav-goals" class="nav-link text-lg font-semibold py-2 px-4">Goals</button>
-                <button id="nav-pomodoro" class="nav-link text-lg font-semibold py-2 px-4">Pomodoro</button>
+    <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Header and Navigation -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-10">
+            <h1 class="text-5xl font-extrabold text-white mb-4 sm:mb-0">Priority Tracker</h1>
+            <nav class="flex items-center space-x-6 text-lg font-semibold">
+                <button id="dashboard-nav" class="nav-button text-gray-300 hover:text-white">Dashboard</button>
+                <button id="priorities-nav" class="nav-button active text-gray-300 hover:text-white">Priorities</button>
+                <button id="goals-nav" class="nav-button text-gray-300 hover:text-white">Goals</button>
             </nav>
+        </header>
 
-            <!-- Main Dashboard Page -->
-            <div id="page-dashboard">
-                <div id="info-bar" class="flex flex-col md:flex-row justify-between items-center mb-10 p-4 rounded-2xl bg-gray-800/50 backdrop-filter backdrop-blur-lg shadow-md fade-in" style="animation-delay: 0.1s;">
-                    <div id="date-time" class="text-center md:text-left">
-                        <p id="date-display" class="font-semibold text-lg text-gray-300"></p>
-                        <p id="time-display" class="font-bold text-2xl text-white"></p>
-                    </div>
-                    <div id="weather-display" class="flex items-center mt-4 md:mt-0"></div>
-                </div>
-
-                <div id="auth-container" class="text-center mb-10 fade-in" style="animation-delay: 0.2s;">
-                     <p id="user-id-display" class="text-sm bg-gray-800/50 rounded-full inline-block px-4 py-1 text-gray-400 mb-4"></p>
-                </div>
-
-                <div id="dashboard-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.3s;">
-                        <div class="bg-gray-700 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-400">Total Tasks</h3>
-                            <p id="total-tasks-count" class="text-4xl font-bold text-white">0</p>
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="hidden view-container">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Overall Progress -->
+                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Overall Progress</h3>
+                        <div class="relative w-32 h-32">
+                            <canvas id="overall-progress-chart"></canvas>
+                            <div id="overall-progress-text" class="absolute inset-0 flex items-center justify-center text-3xl font-bold text-white">0%</div>
                         </div>
                     </div>
-                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.4s;">
-                         <div class="bg-blue-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-blue-400">Daily</h3>
-                            <p id="daily-tasks-count" class="text-4xl font-bold text-white">0</p>
-                        </div>
+                    <!-- Tasks Completed -->
+                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Tasks Completed</h3>
+                        <p class="text-5xl font-bold text-white"><span id="completed-tasks-count">0</span> / <span id="total-tasks-count">0</span></p>
                     </div>
-                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.5s;">
-                         <div class="bg-green-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-green-400">Weekly</h3>
-                            <p id="weekly-tasks-count" class="text-4xl font-bold text-white">0</p>
-                        </div>
+                    <!-- Goals Achieved -->
+                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Goals Achieved</h3>
+                        <p id="goals-achieved-count" class="text-5xl font-bold text-white">0</p>
                     </div>
-                    <div class="dashboard-card p-6 rounded-2xl shadow-lg flex items-center space-x-4 fade-in" style="animation-delay: 0.6s;">
-                         <div class="bg-purple-900/50 h-16 w-16 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0c-.454-.303-.977-.454-1.5-.454V4.5A2.5 2.5 0 014.5 2h15A2.5 2.5 0 0122 4.5v11.046z"/></svg></div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-purple-400">Monthly</h3>
-                            <p id="monthly-tasks-count" class="text-4xl font-bold text-white">0</p>
-                        </div>
+                    <!-- Productivity Streak -->
+                    <div class="glass-card p-6 flex flex-col items-center justify-center text-center">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-2">Productivity Streak</h3>
+                        <p class="text-5xl font-bold text-white"><span id="productivity-streak-count">0</span> Days</p>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.7s;">
-                        <h2 id="daily-tasks-title" class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Daily Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="daily-task-input" placeholder="Add a new daily task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-daily-task-btn" class="w-full mt-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
-                        <ul id="daily-task-list" class="space-y-3"></ul>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                    <div class="glass-card p-6">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-4 text-center">Task Distribution</h3>
+                        <canvas id="task-distribution-chart"></canvas>
                     </div>
-                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.8s;">
-                        <h2 class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Weekly Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="weekly-task-input" placeholder="Add a new weekly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-weekly-task-btn" class="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
-                        <ul id="weekly-task-list" class="space-y-3"></ul>
-                    </div>
-                    <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in" style="animation-delay: 0.9s;">
-                        <h2 id="monthly-tasks-title" class="text-2xl font-semibold mb-4 text-gray-200 border-b border-gray-700 pb-3">Monthly Tasks</h2>
-                        <div class="add-task-form mb-4"><input type="text" id="monthly-task-input" placeholder="Add a new monthly task..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-monthly-task-btn" class="w-full mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Task</button></div>
-                        <ul id="monthly-task-list" class="space-y-3"></ul>
+                    <div class="glass-card p-6">
+                        <h3 class="text-xl font-semibold text-teal-300 mb-4 text-center">Focus Areas</h3>
+                        <canvas id="focus-areas-chart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Goals Page -->
-            <div id="page-goals" class="hidden">
-                <div class="bg-gray-800/50 backdrop-filter backdrop-blur-lg p-6 rounded-2xl shadow-lg fade-in">
-                    <h2 class="text-3xl font-bold mb-4 text-gray-200 border-b border-gray-700 pb-3">Long-Term Goals</h2>
-                    <div class="add-task-form mb-6"><input type="text" id="goal-input" placeholder="Add a new long-term goal..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-700 text-white placeholder-gray-400"><button id="add-goal-btn" class="w-full mt-2 bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 transition-all transform hover:scale-105 shadow-md hover:shadow-lg">Add Goal</button></div>
-                    <div id="goal-list" class="space-y-6"></div>
+            <!-- Priorities View -->
+            <div id="priorities-view" class="view-container">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Daily Card -->
+                     <div class="glass-card p-6">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-sun mr-3 text-teal-300"></i>Today</h2>
+                        <div class="flex mb-4">
+                            <input type="text" id="daily-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New daily priority...">
+                            <button data-type="daily" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <ul id="daily-tasks-list" data-type="daily" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
+                    </div>
+                    <!-- Weekly Card -->
+                    <div class="glass-card p-6">
+                        <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-calendar-week mr-3 text-teal-300"></i>This Week</h2>
+                        <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4"><div id="weekly-progress-bar" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div></div>
+                        <div class="flex mb-4">
+                            <input type="text" id="weekly-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New weekly priority...">
+                            <button data-type="weekly" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <ul id="weekly-tasks-list" data-type="weekly" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
+                    </div>
+                    <!-- Monthly Card -->
+                    <div class="glass-card p-6">
+                        <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-calendar-alt mr-3 text-teal-300"></i>This Month</h2>
+                        <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4"><div id="monthly-progress-bar" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div></div>
+                        <div class="flex mb-4">
+                            <input type="text" id="monthly-task-input" class="flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New monthly priority...">
+                            <button data-type="monthly" class="add-task-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <ul id="monthly-tasks-list" data-type="monthly" class="task-list space-y-3 custom-scrollbar max-h-64 overflow-y-auto pr-2"></ul>
+                    </div>
+                </div>
+
+                <!-- Uncompleted & Quote -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                    <div class="glass-card p-6">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center"><i class="fas fa-archive mr-3 text-gray-400"></i>Uncompleted</h2>
+                        <ul id="uncompleted-tasks-list" class="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2"></ul>
+                    </div>
+                     <div class="glass-card p-6 flex flex-col justify-center items-center text-center">
+                        <h2 class="text-xl font-semibold mb-2 text-teal-300">Quote of the Day</h2>
+                        <p id="quote-text" class="text-lg italic text-gray-300">"The secret of getting ahead is getting started."</p>
+                        <p id="quote-author" class="mt-2 font-medium text-gray-400">- Mark Twain</p>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Pomodoro Page -->
-            <div id="page-pomodoro" class="hidden">
-                <div class="pomodoro-container max-w-md mx-auto p-8 rounded-2xl shadow-2xl text-center fade-in">
-                    <h2 class="text-3xl font-bold mb-6 text-white">Pomodoro Timer</h2>
-                    <div class="flex justify-center space-x-2 mb-6">
-                        <button id="pomodoro-mode-btn" class="px-4 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition">Pomodoro</button>
-                        <button id="short-break-mode-btn" class="px-4 py-2 rounded-lg text-gray-800 bg-gray-400 hover:bg-gray-500 transition">Short Break</button>
-                        <button id="long-break-mode-btn" class="px-4 py-2 rounded-lg text-gray-800 bg-gray-400 hover:bg-gray-500 transition">Long Break</button>
-                    </div>
-                    <div class="relative w-64 h-64 mx-auto mb-6">
-                        <svg class="w-full h-full" viewBox="0 0 100 100">
-                            <circle class="text-gray-700" stroke-width="7" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
-                            <circle id="timer-progress" class="timer-progress-circle text-red-500" stroke-width="7" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
-                        </svg>
-                        <div id="pomodoro-time" class="absolute inset-0 flex items-center justify-center text-5xl font-bold text-white">25:00</div>
-                    </div>
-                    <div class="flex justify-center space-x-4">
-                        <button id="pomodoro-start-pause-btn" class="px-8 py-3 text-xl font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition transform hover:scale-105">Start</button>
-                        <button id="pomodoro-reset-btn" class="px-8 py-3 text-xl font-semibold text-gray-800 bg-gray-400 rounded-lg hover:bg-gray-500 transition">Reset</button>
+
+            <!-- Goals View -->
+            <div id="goals-view" class="hidden view-container">
+                <div class="flex justify-center mb-8">
+                    <div class="glass-card p-4 flex items-center">
+                        <input type="text" id="new-goal-input" class="flex-grow bg-transparent text-lg border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="Enter a new life goal...">
+                        <button id="add-new-goal-btn" class="ml-4 bg-teal-500 text-white font-bold py-2 px-5 rounded-lg hover:bg-teal-400 transition-colors">Add Goal</button>
                     </div>
                 </div>
+                <div id="goals-container" class="space-y-8">
+                    <!-- Goals will be rendered here -->
+                </div>
             </div>
-        </div>
+        </main>
     </div>
-    
-    <!-- Milestone Modal -->
-    <div id="milestone-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden opacity-0">
-        <div class="modal-content bg-gray-800 text-white rounded-2xl shadow-2xl p-8 w-full max-w-md transform scale-95">
-            <h3 class="text-2xl font-bold mb-4" id="modal-goal-title"></h3>
-            <div class="mb-4">
-                <input type="text" id="milestone-input" placeholder="Add a new milestone..." class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400">
-            </div>
-            <div class="flex justify-end space-x-4">
-                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-600 text-gray-200 rounded-lg hover:bg-gray-700 transition">Cancel</button>
-                <button id="modal-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Save Milestone</button>
-            </div>
-        </div>
-    </div>
-
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, addDoc, onSnapshot, deleteDoc, updateDoc, query, getDoc, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyArtHZJxBxWew0fJpexUpq6ABywSZCsD2A",
-            authDomain: "focusapp-585d3.firebaseapp.com",
-            projectId: "focusapp-585d3",
-            storageBucket: "focusapp-585d3.appspot.com",
-            messagingSenderId: "8850203719",
-            appId: "1:8850203719:web:7abdcbae6489e1d9ed3d62",
-            measurementId: "G-EQ174C9P59"
-        };
-        
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-priority-tracker';
+
+        // --- Firebase Initialization ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
         let userId = null;
-        let currentGoalId = null;
+        let userDataUnsubscribe = null;
+        let allUserData = {};
+        
+        // --- Chart Instances ---
+        let overallProgressChart, taskDistributionChart, focusAreasChart;
 
-        // Page elements
-        const landingPage = document.getElementById('landing-page');
-        const appContainer = document.getElementById('app-container');
-        const getStartedBtn = document.getElementById('get-started-btn');
-        const pageDashboard = document.getElementById('page-dashboard');
-        const pageGoals = document.getElementById('page-goals');
-        const pagePomodoro = document.getElementById('page-pomodoro');
-        const navDashboard = document.getElementById('nav-dashboard');
-        const navGoals = document.getElementById('nav-goals');
-        const navPomodoro = document.getElementById('nav-pomodoro');
+        // --- DOM Element References ---
+        const dashboardNav = document.getElementById('dashboard-nav');
+        const prioritiesNav = document.getElementById('priorities-nav');
+        const goalsNav = document.getElementById('goals-nav');
+        const dashboardView = document.getElementById('dashboard-view');
+        const prioritiesView = document.getElementById('priorities-view');
+        const goalsView = document.getElementById('goals-view');
+        const goalsContainer = document.getElementById('goals-container');
+        const addNewGoalBtn = document.getElementById('add-new-goal-btn');
+        const newGoalInput = document.getElementById('new-goal-input');
 
-        // Dashboard elements
-        const dateDisplay = document.getElementById('date-display');
-        const timeDisplay = document.getElementById('time-display');
-        const weatherDisplay = document.getElementById('weather-display');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const totalTasksCountEl = document.getElementById('total-tasks-count');
-        const dailyTasksCountEl = document.getElementById('daily-tasks-count');
-        const weeklyTasksCountEl = document.getElementById('weekly-tasks-count');
-        const monthlyTasksCountEl = document.getElementById('monthly-tasks-count');
-
-        // Task lists
-        const dailyTaskList = document.getElementById('daily-task-list');
-        const weeklyTaskList = document.getElementById('weekly-task-list');
-        const monthlyTaskList = document.getElementById('monthly-task-list');
-        const dailyTaskInput = document.getElementById('daily-task-input');
-        const weeklyTaskInput = document.getElementById('weekly-task-input');
-        const monthlyTaskInput = document.getElementById('monthly-task-input');
-        const addDailyTaskBtn = document.getElementById('add-daily-task-btn');
-        const addWeeklyTaskBtn = document.getElementById('add-weekly-task-btn');
-        const addMonthlyTaskBtn = document.getElementById('add-monthly-task-btn');
-
-        // Goal lists
-        const goalList = document.getElementById('goal-list');
-        const goalInput = document.getElementById('goal-input');
-        const addGoalBtn = document.getElementById('add-goal-btn');
-
-        // Pomodoro Timer Elements
-        const pomodoroTimeEl = document.getElementById('pomodoro-time');
-        const pomodoroStartPauseBtn = document.getElementById('pomodoro-start-pause-btn');
-        const pomodoroResetBtn = document.getElementById('pomodoro-reset-btn');
-        const pomodoroModeBtn = document.getElementById('pomodoro-mode-btn');
-        const shortBreakModeBtn = document.getElementById('short-break-mode-btn');
-        const longBreakModeBtn = document.getElementById('long-break-mode-btn');
-        const timerProgressCircle = document.getElementById('timer-progress');
-        const FULL_DASH_ARRAY = 283;
-
-        // Modal elements
-        const milestoneModal = document.getElementById('milestone-modal');
-        const modalGoalTitle = document.getElementById('modal-goal-title');
-        const milestoneInput = document.getElementById('milestone-input');
-        const modalCancelBtn = document.getElementById('modal-cancel-btn');
-        const modalSaveBtn = document.getElementById('modal-save-btn');
-
-        // --- Landing Page Animation ---
-        function initLandingAnimation() {
-            const canvas = document.getElementById('landing-canvas');
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            const geometry = new THREE.PlaneGeometry(window.innerWidth * 2, window.innerHeight * 2, 32, 32);
-            const material = new THREE.ShaderMaterial({
-                uniforms: {
-                    u_time: { value: 0.0 },
-                    u_mouse: { value: new THREE.Vector2(0, 0) },
-                    u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform float u_time;
-                    uniform vec2 u_mouse;
-                    uniform vec2 u_resolution;
-                    varying vec2 vUv;
-
-                    void main() {
-                        vec2 st = gl_FragCoord.xy/u_resolution.xy;
-                        vec2 mouse = u_mouse;
-                        float dist = distance(st, mouse);
-                        
-                        vec3 color1 = vec3(0.01, 0.05, 0.15);
-                        vec3 color2 = vec3(0.1, 0.0, 0.2);
-                        vec3 color3 = vec3(0.05, 0.1, 0.25);
-
-                        float noise = sin(st.x * 10.0 + u_time * 0.5 + dist * 5.0) + cos(st.y * 15.0 + u_time * 0.3);
-                        vec3 finalColor = mix(color1, color2, smoothstep(0.0, 1.0, sin(u_time + st.x)));
-                        finalColor = mix(finalColor, color3, smoothstep(0.0, 1.0, cos(u_time * 0.5 + st.y)));
-                        finalColor += noise * 0.05;
-
-                        gl_FragColor = vec4(finalColor, 1.0);
-                    }
-                `
-            });
-
-            const mesh = new THREE.Mesh(geometry, material);
-            scene.add(mesh);
-            camera.position.z = 1;
-
-            document.addEventListener('mousemove', (event) => {
-                material.uniforms.u_mouse.value.x = event.clientX / window.innerWidth;
-                material.uniforms.u_mouse.value.y = 1.0 - event.clientY / window.innerHeight;
-            });
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                material.uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
-            });
-
-            const clock = new THREE.Clock();
-            function animate() {
-                requestAnimationFrame(animate);
-                material.uniforms.u_time.value = clock.getElapsedTime();
-                renderer.render(scene, camera);
-            }
-            animate();
-        }
-        initLandingAnimation();
-
-
-        // --- Initial UI Setup ---
-        getStartedBtn.addEventListener('click', () => {
-            landingPage.classList.add('hidden');
-            appContainer.classList.remove('hidden');
-            appContainer.classList.add('fade-in');
-        });
-
-        // --- Navigation ---
-        function showPage(pageName) {
-            pageDashboard.classList.toggle('hidden', pageName !== 'dashboard');
-            pageGoals.classList.toggle('hidden', pageName !== 'goals');
-            pagePomodoro.classList.toggle('hidden', pageName !== 'pomodoro');
-            navDashboard.classList.toggle('active', pageName === 'dashboard');
-            navGoals.classList.toggle('active', pageName === 'goals');
-            navPomodoro.classList.toggle('active', pageName === 'pomodoro');
-        }
-        navDashboard.addEventListener('click', () => showPage('dashboard'));
-        navGoals.addEventListener('click', () => showPage('goals'));
-        navPomodoro.addEventListener('click', () => showPage('pomodoro'));
-
-        // --- Clock and Weather ---
-        function updateClock() {
-            const now = new Date();
-            dateDisplay.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            timeDisplay.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        }
-        async function fetchWeather() {
-            try {
-                const lat = 53.41, lon = -2.99; // Liverpool
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Weather data not available');
-                const data = await response.json();
-                const { temperature, weathercode } = data.current_weather;
-                const weatherInfo = getWeatherIcon(weathercode);
-                weatherDisplay.innerHTML = `<span class="text-4xl mr-3">${weatherInfo.icon}</span><div><p class="font-bold text-2xl text-white">${temperature}°C</p><p class="text-sm text-gray-400">${weatherInfo.desc}</p></div>`;
-            } catch (error) { console.error("Failed to fetch weather:", error); }
-        }
-        function getWeatherIcon(code) {
-            const icons = { 0: { icon: '☀️', desc: 'Clear' }, 1: { icon: '🌤️', desc: 'Mainly Clear' }, 2: { icon: '🌥️', desc: 'Partly Cloudy' }, 3: { icon: '☁️', desc: 'Overcast' }, 45: { icon: '🌫️', desc: 'Fog' }, 61: { icon: '💧', desc: 'Rain' }, 80: { icon: '🌦️', desc: 'Showers' }, 95: { icon: '⛈️', desc: 'Thunderstorm' } };
-            return icons[code] || { icon: '❓', desc: 'Unknown' };
-        }
-        updateClock(); setInterval(updateClock, 1000); fetchWeather();
-
-        // --- Auth & Main Logic ---
+        // --- Authentication ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 userId = user.uid;
-                userIdDisplay.textContent = `User ID: ${userId}`;
-                
-                const dailyTasksTitle = document.getElementById('daily-tasks-title');
-                const monthlyTasksTitle = document.getElementById('monthly-tasks-title');
-                const today = new Date();
-                const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' });
-                const month = today.toLocaleDateString('en-US', { month: 'long' });
-                dailyTasksTitle.textContent = `Daily Tasks - ${dayOfWeek}`;
-                monthlyTasksTitle.textContent = `Monthly Tasks - ${month}`;
-
-                await handleTaskResets();
-                loadDashboardData();
-                loadGoals();
-                setupEventListeners();
-                setMode('pomodoro');
+                setupListeners();
+                checkAndPerformResets();
+                fetchQuote();
             } else {
                 try {
-                    await signInAnonymously(auth);
+                    if (typeof __initial_auth_token !== 'undefined') { await signInWithCustomToken(auth, __initial_auth_token); } 
+                    else { await signInAnonymously(auth); }
                 } catch (error) { console.error("Error during sign-in:", error); }
             }
         });
 
-        // --- Task Reset Logic ---
-        async function handleTaskResets() {
-            if (!userId) return;
-            const now = new Date();
-            const metadataRef = doc(db, `users/${userId}/metadata/tasks`);
-            const metadataSnap = await getDoc(metadataRef);
-            const metadata = metadataSnap.exists() ? metadataSnap.data() : {};
-            const updates = {};
-            const lastDailyReset = metadata.lastDailyReset?.toDate();
-            if (!lastDailyReset || lastDailyReset < getStartOfDay(now)) {
-                await deleteCollection(`users/${userId}/daily`);
-                updates.lastDailyReset = now;
-            }
-            const lastWeeklyReset = metadata.lastWeeklyReset?.toDate();
-            if (!lastWeeklyReset || lastWeeklyReset < getStartOfWeek(now)) {
-                await deleteCollection(`users/${userId}/weekly`);
-                updates.lastWeeklyReset = now;
-            }
-            const lastMonthlyReset = metadata.lastMonthlyReset?.toDate();
-            if (!lastMonthlyReset || lastMonthlyReset < getStartOfMonth(now)) {
-                await deleteCollection(`users/${userId}/monthly`);
-                updates.lastMonthlyReset = now;
-            }
-            if (Object.keys(updates).length > 0) {
-                await setDoc(metadataRef, updates, { merge: true });
-            }
+        // --- Navigation ---
+        function switchView(viewToShow) {
+            dashboardView.classList.toggle('hidden', viewToShow !== 'dashboard');
+            prioritiesView.classList.toggle('hidden', viewToShow !== 'priorities');
+            goalsView.classList.toggle('hidden', viewToShow !== 'goals');
+            dashboardNav.classList.toggle('active', viewToShow === 'dashboard');
+            prioritiesNav.classList.toggle('active', viewToShow === 'priorities');
+            goalsNav.classList.toggle('active', viewToShow === 'goals');
         }
-        function getStartOfDay(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; }
-        function getStartOfWeek(date) { const d = new Date(date); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return getStartOfDay(new Date(d.setDate(diff))); }
-        function getStartOfMonth(date) { const d = new Date(date); return new Date(d.getFullYear(), d.getMonth(), 1); }
-        async function deleteCollection(collectionPath) {
-            const q = query(collection(db, collectionPath));
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return;
-            const batch = writeBatch(db);
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-        }
-
-        // --- Modal Logic ---
-        function openMilestoneModal(goalId, goalText) {
-            currentGoalId = goalId;
-            modalGoalTitle.textContent = `Add Milestone for: ${goalText}`;
-            milestoneModal.classList.remove('hidden');
-            setTimeout(() => {
-                milestoneModal.classList.remove('opacity-0');
-                milestoneModal.querySelector('.modal-content').classList.remove('scale-95');
-            }, 10);
-        }
-        function closeMilestoneModal() {
-            milestoneModal.classList.add('opacity-0');
-            milestoneModal.querySelector('.modal-content').classList.add('scale-95');
-            setTimeout(() => {
-                milestoneModal.classList.add('hidden');
-                milestoneInput.value = '';
-                currentGoalId = null;
-            }, 250);
-        }
+        dashboardNav.addEventListener('click', () => switchView('dashboard'));
+        prioritiesNav.addEventListener('click', () => switchView('priorities'));
+        goalsNav.addEventListener('click', () => switchView('goals'));
         
-        // --- Generic Firestore Functions ---
-        async function addItem(type, text) {
-            if (!text.trim() || !userId) return;
-            try {
-                await addDoc(collection(db, `users/${userId}/${type}`), { text: text, completed: false, createdAt: new Date() });
-            } catch (e) { console.error(`Error adding ${type}:`, e); }
-        }
-        async function addMilestone(goalId, text) {
-            if (!text.trim() || !userId) return;
-            try {
-                await addDoc(collection(db, `users/${userId}/goals/${goalId}/milestones`), { text: text, completed: false, createdAt: new Date() });
-            } catch (e) { console.error("Error adding milestone: ", e); }
-        }
-        async function deleteItem(type, itemId, subCollectionPath = '') {
-            if (!userId) return;
-            try {
-                const docPath = `users/${userId}/${type}/${itemId}${subCollectionPath}`;
-                await deleteDoc(doc(db, docPath));
-            } catch (e) { console.error("Error deleting item: ", e); }
-        }
-        async function updateItemStatus(type, itemId, isCompleted, subCollectionPath = '') {
-             if (!userId) return;
-            try {
-                const docPath = `users/${userId}/${type}/${itemId}${subCollectionPath}`;
-                await updateDoc(doc(db, docPath), { completed: isCompleted });
-            } catch (e) { console.error("Error updating status: ", e); }
-        }
+        // Set initial view
+        switchView('priorities');
 
-        // --- Data Loading and Rendering ---
-        function loadDashboardData() {
+        // --- Data Listener ---
+        function setupListeners() {
             if (!userId) return;
-            const taskTypes = [ { type: 'daily', listElement: dailyTaskList }, { type: 'weekly', listElement: weeklyTaskList }, { type: 'monthly', listElement: monthlyTaskList } ];
-            let allTasks = [];
-            taskTypes.forEach(({ type, listElement }) => {
-                const q = query(collection(db, `users/${userId}/${type}`));
-                onSnapshot(q, (snapshot) => {
-                    listElement.innerHTML = '';
-                    const tasksForType = [];
-                    snapshot.forEach(doc => tasksForType.push({ id: doc.id, type: type, ...doc.data() }));
-                    allTasks = allTasks.filter(t => t.type !== type).concat(tasksForType);
-                    tasksForType.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                    tasksForType.forEach(task => renderTask(task, listElement));
-                    updateDashboardStats(allTasks);
-                });
-            });
-        }
-        function formatDate(timestamp) {
-            if (!timestamp || !timestamp.seconds) return '';
-            return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        }
-        function renderTask(task, listElement) {
-            const li = document.createElement('li');
-            li.setAttribute('data-id', task.id);
-            const categoryClass = `task-item-${task.type}`;
-            li.className = `task-item ${categoryClass} flex items-center bg-gray-700/50 p-3 rounded-lg shadow-sm text-gray-100`;
-            li.innerHTML = `<input type="checkbox" class="custom-checkbox flex-shrink-0" ${task.completed ? 'checked' : ''}><div class="flex-grow ml-4"><span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span><div class="text-xs text-gray-400 mt-1">${formatDate(task.createdAt)}</div></div><button class="delete-btn text-red-500 hover:text-red-700 font-bold ml-4 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>`;
-            li.querySelector('.custom-checkbox').addEventListener('change', (e) => updateItemStatus(task.type, task.id, e.target.checked));
-            li.querySelector('.delete-btn').addEventListener('click', () => deleteItem(task.type, task.id));
-            listElement.appendChild(li);
-        }
-        function updateDashboardStats(allTasks) {
-            const dailyCount = allTasks.filter(t => t.type === 'daily').length;
-            const weeklyCount = allTasks.filter(t => t.type === 'weekly').length;
-            const monthlyCount = allTasks.filter(t => t.type === 'monthly').length;
-            totalTasksCountEl.textContent = dailyCount + weeklyCount + monthlyCount;
-            dailyTasksCountEl.textContent = dailyCount;
-            weeklyTasksCountEl.textContent = weeklyCount;
-            monthlyTasksCountEl.textContent = monthlyCount;
-        }
-        function loadGoals() {
-            if (!userId) return;
-            const q = query(collection(db, `users/${userId}/goals`));
-            onSnapshot(q, (snapshot) => {
-                goalList.innerHTML = '';
-                snapshot.forEach(doc => renderGoal({ id: doc.id, ...doc.data() }));
-            });
-        }
-        function renderGoal(goal) {
-            const goalCard = document.createElement('div');
-            goalCard.className = 'goal-card p-6 rounded-2xl shadow-lg';
-            const milestonesCollection = collection(db, `users/${userId}/goals/${goal.id}/milestones`);
-            onSnapshot(milestonesCollection, (milestonesSnapshot) => {
-                const milestones = [];
-                milestonesSnapshot.forEach(doc => milestones.push({ id: doc.id, ...doc.data() }));
-                const completedMilestones = milestones.filter(m => m.completed).length;
-                const progress = milestones.length > 0 ? (completedMilestones / milestones.length) * 100 : 0;
-                goalCard.innerHTML = `<div class="flex justify-between items-start"><h3 class="text-xl font-bold text-amber-400">${goal.text}</h3><button class="delete-goal-btn text-red-500 hover:text-red-700"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div><div class="mt-4"><div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-400">Progress</span><span class="text-sm font-medium text-gray-400">${Math.round(progress)}%</span></div><div class="w-full bg-gray-700 rounded-full h-2.5"><div class="bg-amber-500 h-2.5 rounded-full" style="width: ${progress}%"></div></div></div><div class="mt-4 pt-4 border-t border-gray-700"><h4 class="font-semibold text-gray-300 mb-2">Milestones</h4><ul class="milestone-list space-y-2">${milestones.map(m => `<li class="milestone-item flex items-center"><input type="checkbox" data-id="${m.id}" class="custom-checkbox flex-shrink-0" ${m.completed ? 'checked' : ''}><span class="milestone-text flex-grow ml-3 ${m.completed ? 'completed' : ''}">${m.text}</span><button data-id="${m.id}" class="delete-milestone-btn delete-btn text-red-400 hover:text-red-600"><svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></button></li>`).join('')}</ul><button class="add-milestone-btn mt-4 w-full text-sm text-blue-400 bg-blue-900/50 hover:bg-blue-800/50 rounded-lg py-2 transition">Add Milestone</button></div>`;
-                goalCard.querySelector('.delete-goal-btn').addEventListener('click', () => deleteItem('goals', goal.id));
-                goalCard.querySelector('.add-milestone-btn').addEventListener('click', () => openMilestoneModal(goal.id, goal.text));
-                goalCard.querySelectorAll('.milestone-item .custom-checkbox').forEach(cb => cb.addEventListener('change', (e) => updateItemStatus('goals', goal.id, e.target.checked, `/milestones/${e.target.dataset.id}`)));
-                goalCard.querySelectorAll('.delete-milestone-btn').forEach(btn => btn.addEventListener('click', (e) => deleteItem('goals', goal.id, `/milestones/${e.currentTarget.dataset.id}`)));
-            });
-            goalList.appendChild(goalCard);
-        }
-        
-        // --- Pomodoro State & Logic ---
-        let pomodoroInterval = null;
-        let timerState = { mode: 'pomodoro', running: false, time: 25 * 60, modes: { pomodoro: { time: 25 * 60, color: 'text-red-500' }, shortBreak: { time: 5 * 60, color: 'text-green-500' }, longBreak: { time: 15 * 60, color: 'text-blue-500' } } };
-        function updateTimerDisplay() {
-            const minutes = Math.floor(timerState.time / 60);
-            const seconds = timerState.time % 60;
-            pomodoroTimeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            updateProgressCircle();
-        }
-        function updateProgressCircle() {
-            const totalTime = timerState.modes[timerState.mode].time;
-            const timeFraction = timerState.time / totalTime;
-            const offset = timeFraction * FULL_DASH_ARRAY;
-            timerProgressCircle.style.strokeDashoffset = offset;
-        }
-        function startTimer() {
-            if (timerState.running) return;
-            timerState.running = true;
-            pomodoroStartPauseBtn.textContent = 'Pause';
-            Tone.start();
-            pomodoroInterval = setInterval(() => {
-                if (timerState.time > 0) {
-                    timerState.time--;
-                    updateTimerDisplay();
+            if (userDataUnsubscribe) userDataUnsubscribe();
+
+            const userDocRef = doc(db, "artifacts", appId, "users", userId);
+            userDataUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    allUserData = docSnap.data();
+                    renderAll();
                 } else {
-                    clearInterval(pomodoroInterval);
-                    timerState.running = false;
-                    pomodoroStartPauseBtn.textContent = 'Start';
-                    playFinishSound();
-                    resetTimer();
+                    const initialData = {
+                        dailyTasks: [], weeklyTasks: [], monthlyTasks: [], uncompletedTasks: [],
+                        goals: [],
+                        lastReset: {
+                            daily: new Date().toISOString().split('T')[0],
+                            weekly: getWeekNumber(new Date()),
+                            monthly: new Date().getMonth()
+                        },
+                        streak: { count: 0, lastCompletionDate: null }
+                    };
+                    setDoc(userDocRef, initialData).then(() => {
+                        allUserData = initialData;
+                        renderAll();
+                    });
                 }
-            }, 1000);
+            });
         }
-        function pauseTimer() {
-            if (!timerState.running) return;
-            timerState.running = false;
-            pomodoroStartPauseBtn.textContent = 'Start';
-            clearInterval(pomodoroInterval);
-        }
-        function resetTimer() {
-            clearInterval(pomodoroInterval);
-            timerState.running = false;
-            timerState.time = timerState.modes[timerState.mode].time;
-            pomodoroStartPauseBtn.textContent = 'Start';
-            updateTimerDisplay();
-        }
-        function setMode(mode) {
-            timerState.mode = mode;
-            const modeButtons = [pomodoroModeBtn, shortBreakModeBtn, longBreakModeBtn];
-            const modeColors = { pomodoro: { bg: 'bg-red-500', text: 'text-white', hover: 'hover:bg-red-600' }, shortBreak: { bg: 'bg-green-500', text: 'text-white', hover: 'hover:bg-green-600' }, longBreak: { bg: 'bg-blue-500', text: 'text-white', hover: 'hover:bg-blue-600' } };
-            modeButtons.forEach(btn => { btn.classList.remove(...Object.values(modeColors).flatMap(c => Object.values(c))); btn.classList.add('bg-gray-400', 'text-gray-800', 'hover:bg-gray-500'); });
-            const selectedBtn = document.getElementById(`${mode}-mode-btn`);
-            selectedBtn.classList.remove('bg-gray-400', 'text-gray-800', 'hover:bg-gray-500');
-            selectedBtn.classList.add(modeColors[mode].bg, modeColors[mode].text, modeColors[mode].hover);
-            timerProgressCircle.setAttribute('class', `timer-progress-circle ${timerState.modes[mode].color}`);
-            resetTimer();
-        }
-        function playFinishSound() { const synth = new Tone.Synth().toDestination(); synth.triggerAttackRelease("C5", "8n", Tone.now()); synth.triggerAttackRelease("G5", "8n", Tone.now() + 0.2); }
 
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            const setupCategory = (button, input, type) => {
-                button.addEventListener('click', () => { addItem(type, input.value); input.value = ''; });
-                input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { addItem(type, input.value); input.value = ''; } });
-            };
-            setupCategory(addDailyTaskBtn, dailyTaskInput, 'daily');
-            setupCategory(addWeeklyTaskBtn, weeklyTaskInput, 'weekly');
-            setupCategory(addMonthlyTaskBtn, monthlyTaskInput, 'monthly');
-            setupCategory(addGoalBtn, goalInput, 'goals');
+        // --- Main Render Function ---
+        function renderAll() {
+            renderTasks('daily', allUserData.dailyTasks || []);
+            renderTasks('weekly', allUserData.weeklyTasks || []);
+            renderTasks('monthly', allUserData.monthlyTasks || []);
+            renderTasks('uncompleted', allUserData.uncompletedTasks || []);
+            renderGoals(allUserData.goals || []);
+            updateAllProgressBars();
+            updateDashboard();
+        }
+
+        // --- Task Rendering & Logic ---
+        function renderTasks(type, tasks) {
+            const listElement = document.getElementById(`${type}-tasks-list`);
+            if (!listElement) return;
+            listElement.innerHTML = tasks.map(task => `
+                <li class="task-item flex items-center justify-between p-3 rounded-lg bg-white/5" data-id="${task.id}">
+                    <div class="flex items-center flex-grow">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} class="task-checkbox h-5 w-5 rounded-full border-2 bg-transparent border-white/50 text-teal-400 focus:ring-0 focus:ring-offset-0 cursor-pointer">
+                        <span class="ml-4 text-lg ${task.completed ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                    </div>
+                    ${type !== 'uncompleted' ? `<button class="delete-task-btn text-gray-500 hover:text-red-400 transition-colors text-xl"><i class="fas fa-trash-alt"></i></button>` : ''}
+                </li>
+            `).join('');
+        }
+        
+        async function updateTasks(type, updatedTasks, completedTaskId = null) {
+            const userDocRef = doc(db, "artifacts", appId, "users", userId);
+            const updateData = { [`${type}Tasks`]: updatedTasks };
+
+            if (completedTaskId) {
+                const today = new Date().toISOString().split('T')[0];
+                const streak = allUserData.streak || { count: 0, lastCompletionDate: null };
+                const lastDate = streak.lastCompletionDate;
+
+                if (lastDate !== today) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    
+                    if (lastDate === yesterdayStr) {
+                        streak.count++;
+                    } else {
+                        streak.count = 1;
+                    }
+                    streak.lastCompletionDate = today;
+                    updateData.streak = streak;
+                }
+            }
+            await updateDoc(userDocRef, updateData);
+        }
+
+        function addTask(type) {
+            const input = document.getElementById(`${type}-task-input`);
+            const text = input.value.trim();
+            if (text === '') return;
+            const newTask = { id: crypto.randomUUID(), text, completed: false };
+            updateTasks(type, [...(allUserData[`${type}Tasks`] || []), newTask]);
+            input.value = '';
+        }
+
+        // --- Event Delegation for Tasks ---
+        prioritiesView.addEventListener('click', (e) => {
+            const target = e.target;
+            const addBtn = target.closest('.add-task-btn');
+            if (addBtn) {
+                addTask(addBtn.dataset.type);
+                return;
+            }
+            const taskItem = target.closest('.task-item');
+            if (!taskItem) return;
+            const taskList = taskItem.closest('.task-list');
+            if (!taskList) return;
+
+            const taskId = taskItem.dataset.id;
+            const taskType = taskList.dataset.type;
+
+            if (target.matches('.task-checkbox')) {
+                const updatedTasks = (allUserData[`${taskType}Tasks`] || []).map(task => 
+                    task.id === taskId ? { ...task, completed: target.checked } : task
+                );
+                updateTasks(taskType, updatedTasks, target.checked ? taskId : null);
+            } else if (target.closest('.delete-task-btn')) {
+                taskItem.classList.add('removing');
+                setTimeout(() => {
+                    const updatedTasks = (allUserData[`${taskType}Tasks`] || []).filter(task => task.id !== taskId);
+                    updateTasks(taskType, updatedTasks);
+                }, 400);
+            }
+        });
+
+        ['daily', 'weekly', 'monthly'].forEach(type => {
+            document.getElementById(`${type}-task-input`).addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(type); });
+        });
+
+        // --- Goal & Milestone Rendering & Logic ---
+        function renderGoals(goals = []) {
+            goalsContainer.innerHTML = goals.map(goal => `
+                <div class="goal-card glass-card p-6" data-goal-id="${goal.id}">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-white">${goal.text}</h3>
+                        <button class="delete-goal-btn text-gray-500 hover:text-red-400 transition-colors text-xl"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="w-full progress-bar-bg rounded-full h-2.5 mb-4">
+                        <div id="milestone-progress-${goal.id}" class="progress-bar-fg h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <ul class="milestones-list space-y-3 mb-4 custom-scrollbar max-h-48 overflow-y-auto pr-2">
+                        ${(goal.milestones || []).map(m => `
+                            <li class="milestone-item flex items-center justify-between p-2 rounded-lg bg-white/5" data-milestone-id="${m.id}">
+                                <div class="flex items-center flex-grow">
+                                    <input type="checkbox" ${m.completed ? 'checked' : ''} class="milestone-checkbox h-5 w-5 rounded-full border-2 bg-transparent border-white/50 text-teal-400 focus:ring-0 focus:ring-offset-0 cursor-pointer">
+                                    <span class="ml-4 ${m.completed ? 'line-through text-gray-400' : ''}">${m.text}</span>
+                                </div>
+                                <button class="delete-milestone-btn text-gray-500 hover:text-red-400 transition-colors"><i class="fas fa-trash-alt"></i></button>
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <div class="flex mt-4">
+                        <input type="text" class="add-milestone-input flex-grow bg-transparent border-b-2 border-white/30 focus:outline-none focus:border-teal-300 placeholder-white/50" placeholder="New milestone...">
+                        <button class="add-milestone-btn ml-3 text-2xl text-gray-400 hover:text-teal-300 transition-colors"><i class="fas fa-plus-circle"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function updateGoals(updatedGoals) {
+            const userDocRef = doc(db, "artifacts", appId, "users", userId);
+            await updateDoc(userDocRef, { goals: updatedGoals });
+        }
+
+        // --- Event Delegation for Goals ---
+        addNewGoalBtn.addEventListener('click', () => {
+            const text = newGoalInput.value.trim();
+            if (text === '') return;
+            const newGoal = { id: crypto.randomUUID(), text, milestones: [] };
+            updateGoals([...(allUserData.goals || []), newGoal]);
+            newGoalInput.value = '';
+        });
+        newGoalInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addNewGoalBtn.click(); });
+
+        goalsContainer.addEventListener('click', (e) => {
+            const target = e.target;
+            const goalCard = target.closest('.goal-card');
+            if (!goalCard) return;
+            const goalId = goalCard.dataset.goalId;
+
+            if (target.closest('.delete-goal-btn')) {
+                goalCard.classList.add('removing');
+                setTimeout(() => {
+                    const updatedGoals = (allUserData.goals || []).filter(g => g.id !== goalId);
+                    updateGoals(updatedGoals);
+                }, 400);
+                return;
+            }
+
+            if (target.closest('.add-milestone-btn')) {
+                const inputElement = goalCard.querySelector('.add-milestone-input');
+                const text = inputElement.value.trim();
+                if (text === '') return;
+                const newMilestone = { id: crypto.randomUUID(), text, completed: false };
+                const updatedGoals = (allUserData.goals || []).map(g => 
+                    g.id === goalId ? { ...g, milestones: [...(g.milestones || []), newMilestone] } : g
+                );
+                updateGoals(updatedGoals);
+                inputElement.value = '';
+                return;
+            }
+
+            const milestoneItem = target.closest('.milestone-item');
+            if (!milestoneItem) return;
+            const milestoneId = milestoneItem.dataset.milestoneId;
+
+            if (target.matches('.milestone-checkbox')) {
+                const updatedGoals = (allUserData.goals || []).map(g => {
+                    if (g.id === goalId) {
+                        const updatedMilestones = (g.milestones || []).map(m => m.id === milestoneId ? { ...m, completed: target.checked } : m);
+                        return { ...g, milestones: updatedMilestones };
+                    }
+                    return g;
+                });
+                updateGoals(updatedGoals);
+            }
+            else if (target.closest('.delete-milestone-btn')) {
+                milestoneItem.classList.add('removing');
+                setTimeout(() => {
+                    const updatedGoals = (allUserData.goals || []).map(g => {
+                        if (g.id === goalId) {
+                            const updatedMilestones = (g.milestones || []).filter(m => m.id !== milestoneId);
+                            return { ...g, milestones: updatedMilestones };
+                        }
+                        return g;
+                    });
+                    updateGoals(updatedGoals);
+                }, 400);
+            }
+        });
+
+        goalsContainer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.target.matches('.add-milestone-input')) {
+                e.target.nextElementSibling.click();
+            }
+        });
+
+        // --- Progress & Reset ---
+        function updateAllProgressBars() {
+            ['weekly', 'monthly'].forEach(type => {
+                const tasks = allUserData[`${type}Tasks`] || [];
+                const percentage = tasks.length > 0 ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0;
+                const progressBar = document.getElementById(`${type}-progress-bar`);
+                if(progressBar) progressBar.style.width = `${percentage}%`;
+            });
+            (allUserData.goals || []).forEach(goal => {
+                const milestones = goal.milestones || [];
+                const percentage = milestones.length > 0 ? (milestones.filter(m => m.completed).length / milestones.length) * 100 : 0;
+                const progressBar = document.getElementById(`milestone-progress-${goal.id}`);
+                if (progressBar) progressBar.style.width = `${percentage}%`;
+            });
+        }
+        
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+        }
+
+        async function checkAndPerformResets() {
+            if (!userId) return;
+            const userDocRef = doc(db, "artifacts", appId, "users", userId);
+            const docSnap = await getDoc(userDocRef);
+            if (!docSnap.exists()) return;
+
+            const data = docSnap.data();
+            const lastReset = data.lastReset || {};
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const currentWeek = getWeekNumber(now);
+            const currentMonth = now.getMonth();
             
-            modalCancelBtn.addEventListener('click', closeMilestoneModal);
-            modalSaveBtn.addEventListener('click', async () => {
-                const text = milestoneInput.value;
-                if (text.trim() && currentGoalId) {
-                    await addMilestone(currentGoalId, text);
-                    closeMilestoneModal();
+            const batch = writeBatch(db);
+            let needsUpdate = false;
+            let uncompletedTasks = data.uncompletedTasks || [];
+
+            if (lastReset.daily !== today) {
+                uncompletedTasks.push(...(data.dailyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'daily'})));
+                batch.update(userDocRef, { dailyTasks: [], "lastReset.daily": today });
+                needsUpdate = true;
+            }
+            if (lastReset.weekly !== currentWeek) {
+                uncompletedTasks.push(...(data.weeklyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'weekly'})));
+                batch.update(userDocRef, { weeklyTasks: [], "lastReset.weekly": currentWeek });
+                needsUpdate = true;
+            }
+            if (lastReset.monthly !== currentMonth) {
+                uncompletedTasks.push(...(data.monthlyTasks || []).filter(t => !t.completed).map(t => ({...t, from: 'monthly'})));
+                batch.update(userDocRef, { monthlyTasks: [], "lastReset.monthly": currentMonth });
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                batch.update(userDocRef, { uncompletedTasks: uncompletedTasks });
+                await batch.commit();
+            }
+        }
+
+        // --- Dashboard Logic ---
+        function updateDashboard() {
+            const { dailyTasks = [], weeklyTasks = [], monthlyTasks = [], goals = [], streak = { count: 0 } } = allUserData;
+            const allTasks = [...dailyTasks, ...weeklyTasks, ...monthlyTasks];
+            
+            const completedTasks = allTasks.filter(t => t.completed).length;
+            const totalTasks = allTasks.length;
+            const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+            document.getElementById('completed-tasks-count').textContent = completedTasks;
+            document.getElementById('total-tasks-count').textContent = totalTasks;
+            document.getElementById('overall-progress-text').textContent = `${overallProgress}%`;
+
+            const goalsAchieved = goals.filter(g => (g.milestones || []).length > 0 && (g.milestones || []).every(m => m.completed)).length;
+            document.getElementById('goals-achieved-count').textContent = goalsAchieved;
+            
+            document.getElementById('productivity-streak-count').textContent = streak.count;
+
+            updateCharts(allTasks, dailyTasks, weeklyTasks, monthlyTasks);
+        }
+
+        function updateCharts(allTasks, daily, weekly, monthly) {
+            const completed = allTasks.filter(t => t.completed).length;
+            const pending = allTasks.length - completed;
+
+            // Overall Progress Chart
+            const opcCtx = document.getElementById('overall-progress-chart').getContext('2d');
+            if(overallProgressChart) overallProgressChart.destroy();
+            overallProgressChart = new Chart(opcCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [completed, pending],
+                        backgroundColor: ['#2DD4BF', 'rgba(255, 255, 255, 0.1)'],
+                        borderWidth: 0,
+                        cutout: '80%'
+                    }]
+                },
+                options: { plugins: { tooltip: { enabled: false } } }
+            });
+
+            // Task Distribution Chart
+            const tdcCtx = document.getElementById('task-distribution-chart').getContext('2d');
+            if(taskDistributionChart) taskDistributionChart.destroy();
+            taskDistributionChart = new Chart(tdcCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Completed', 'Pending'],
+                    datasets: [{
+                        data: [completed, pending],
+                        backgroundColor: ['#14B8A6', '#374151'],
+                        borderColor: '#1F2937',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top', labels: { color: '#D1D5DB' } } }
                 }
             });
 
-            pomodoroStartPauseBtn.addEventListener('click', () => { timerState.running ? pauseTimer() : startTimer(); });
-            pomodoroResetBtn.addEventListener('click', resetTimer);
-            pomodoroModeBtn.addEventListener('click', () => setMode('pomodoro'));
-            shortBreakModeBtn.addEventListener('click', () => setMode('shortBreak'));
-            longBreakModeBtn.addEventListener('click', () => setMode('longBreak'));
+            // Focus Areas Chart
+            const facCtx = document.getElementById('focus-areas-chart').getContext('2d');
+            if(focusAreasChart) focusAreasChart.destroy();
+            focusAreasChart = new Chart(facCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Daily', 'Weekly', 'Monthly'],
+                    datasets: [{
+                        label: 'Total Tasks',
+                        data: [daily.length, weekly.length, monthly.length],
+                        backgroundColor: ['#2DD4BF', '#14B8A6', '#0D9488'],
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#9CA3AF', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { ticks: { color: '#D1D5DB' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+
+        // --- Motivational Quote ---
+        const localQuotes = [
+            { content: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+            { content: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+            { content: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+            { content: "Everything you’ve ever wanted is on the other side of fear.", author: "George Addair" },
+            { content: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" }
+        ];
+
+        async function fetchQuote() {
+            try {
+                const response = await fetch("https://api.quotable.io/random?tags=inspirational|wisdom|success");
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                document.getElementById('quote-text').textContent = `"${data.content}"`;
+                document.getElementById('quote-author').textContent = `- ${data.author}`;
+            } catch (error) {
+                console.error("Quote fetch error, falling back to local quotes:", error);
+                const randomQuote = localQuotes[Math.floor(Math.random() * localQuotes.length)];
+                document.getElementById('quote-text').textContent = `"${randomQuote.content}"`;
+                document.getElementById('quote-author').textContent = `- ${randomQuote.author}`;
+            }
         }
     </script>
 </body>

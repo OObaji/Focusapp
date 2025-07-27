@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task & Goal Tracker</title>
+    <title>Focal Point</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -52,74 +52,127 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 font-sans transition-colors duration-300">
 
-    <!-- App Header -->
-    <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
-        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-4">
-                   <div class="flex items-center gap-2 text-xl font-bold text-gray-800 dark:text-white">
-                        <i class="fa-solid fa-bullseye text-blue-500"></i>
-                        <span>Momentum</span>
-                    </div>
-                     <div class="hidden md:flex items-center space-x-1">
-                        <button id="nav-tasks" class="px-3 py-2 rounded-md text-sm font-medium">Tasks</button>
-                        <button id="nav-goals" class="px-3 py-2 rounded-md text-sm font-medium">Goals</button>
-                    </div>
-                </div>
-                 <div class="flex items-center gap-4">
-                    <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <i class="fa-solid fa-moon"></i>
-                    </button>
-                     <div id="user-id-display" class="text-xs text-gray-400 dark:text-gray-500 hidden sm:block"></div>
-                </div>
-            </div>
-             <div class="md:hidden flex items-center justify-around border-t border-gray-200 dark:border-gray-700 py-1">
-                <button id="mobile-nav-tasks" class="flex-1 py-2 text-sm font-medium">Tasks</button>
-                <button id="mobile-nav-goals" class="flex-1 py-2 text-sm font-medium">Goals</button>
-            </div>
-        </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-0 sm:px-6 lg:px-8 py-4">
-        <div class="max-w-4xl mx-auto">
-            <!-- Loading State -->
-            <div id="loading-view" class="flex items-center justify-center h-64">
-                <p class="text-lg text-gray-600 dark:text-gray-300">Initializing Tracker...</p>
+    <!-- Auth View (Login/Register) -->
+    <div id="auth-view" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="flex items-center justify-center gap-2 text-2xl font-bold text-gray-800 dark:text-white mb-8">
+                <i class="fa-solid fa-bullseye text-blue-500"></i>
+                <span>Focal Point</span>
             </div>
 
-            <!-- Tasks Page -->
-            <div id="tasks-view" class="hidden-view p-4 sm:p-6 md:p-8">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
-                <div class="mb-6">
-                    <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700">
-                        <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">daily</button>
-                        <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">weekly</button>
-                        <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">monthly</button>
-                        <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">uncompleted</button>
-                    </div>
+            <!-- Login Form -->
+            <div id="login-container">
+                <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl">
+                    <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">Welcome Back!</h2>
+                    <form id="login-form">
+                        <div class="mb-4">
+                            <label for="login-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                            <input id="login-email" type="email" placeholder="you@example.com" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                            <input id="login-password" type="password" placeholder="••••••••" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
+                        </div>
+                        <button type="submit" class="w-full py-3 px-4 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors">Login</button>
+                    </form>
+                    <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+                        Don't have an account? <button id="show-register-btn" class="font-semibold text-blue-500 hover:underline">Sign up</button>
+                    </p>
                 </div>
-                <form id="add-task-form" class="flex gap-2 mb-6">
-                    <input id="new-task-input" type="text" class="flex-grow p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 transition" />
-                    <button type="submit" class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add</span>
-                    </button>
-                </form>
-                <div id="task-list"></div>
             </div>
 
-            <!-- Goals Page -->
-            <div id="goals-view" class="hidden-view p-4 sm:p-6 md:p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">My Goals</h2>
-                    <button id="add-goal-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
-                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
-                    </button>
+            <!-- Register Form -->
+            <div id="register-container" class="hidden">
+                 <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl">
+                    <h2 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">Create Account</h2>
+                    <form id="register-form">
+                        <div class="mb-4">
+                            <label for="register-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                            <input id="register-email" type="email" placeholder="you@example.com" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="register-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                            <input id="register-password" type="password" placeholder="•••••••• (min. 6 characters)" class="w-full p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
+                        </div>
+                        <button type="submit" class="w-full py-3 px-4 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors">Register</button>
+                    </form>
+                    <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+                        Already have an account? <button id="show-login-btn" class="font-semibold text-blue-500 hover:underline">Login</button>
+                    </p>
                 </div>
-                <div id="goal-list"></div>
             </div>
+            <p id="auth-error" class="text-center text-red-500 mt-4 h-4"></p>
         </div>
-    </main>
+    </div>
+    
+    <!-- Main App View (hidden until logged in) -->
+    <div id="app-view" class="hidden-view">
+        <!-- App Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40">
+            <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-4">
+                       <div class="flex items-center gap-2 text-xl font-bold text-gray-800 dark:text-white">
+                            <i class="fa-solid fa-bullseye text-blue-500"></i>
+                            <span>Focal Point</span>
+                        </div>
+                         <div class="hidden md:flex items-center space-x-1">
+                            <button id="nav-tasks" class="px-3 py-2 rounded-md text-sm font-medium">Tasks</button>
+                            <button id="nav-goals" class="px-3 py-2 rounded-md text-sm font-medium">Goals</button>
+                        </div>
+                    </div>
+                     <div class="flex items-center gap-4">
+                        <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <i class="fa-solid fa-moon"></i>
+                        </button>
+                        <button id="logout-btn" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+                 <div class="md:hidden flex items-center justify-around border-t border-gray-200 dark:border-gray-700 py-1">
+                    <button id="mobile-nav-tasks" class="flex-1 py-2 text-sm font-medium">Tasks</button>
+                    <button id="mobile-nav-goals" class="flex-1 py-2 text-sm font-medium">Goals</button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-0 sm:px-6 lg:px-8 py-4">
+            <div class="max-w-4xl mx-auto">
+                <!-- Tasks Page -->
+                <div id="tasks-view" class="hidden-view p-4 sm:p-6 md:p-8">
+                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
+                    <div class="mb-6">
+                        <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700">
+                            <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">daily</button>
+                            <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">weekly</button>
+                            <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">monthly</button>
+                            <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold">uncompleted</button>
+                        </div>
+                    </div>
+                    <form id="add-task-form" class="flex gap-2 mb-6">
+                        <input id="new-task-input" type="text" class="flex-grow p-3 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 transition" />
+                        <button type="submit" class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add</span>
+                        </button>
+                    </form>
+                    <div id="task-list"></div>
+                </div>
+
+                <!-- Goals Page -->
+                <div id="goals-view" class="hidden-view p-4 sm:p-6 md:p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">My Goals</h2>
+                        <button id="add-goal-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow hover:shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
+                        </button>
+                    </div>
+                    <div id="goal-list"></div>
+                </div>
+            </div>
+        </main>
+    </div>
     
     <!-- Modal for adding goals -->
     <div id="goal-modal" class="fixed hidden inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 justify-center items-center p-4">
@@ -152,13 +205,20 @@
 
     <!-- Firebase and App Logic -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
         // --- Firebase Configuration ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAjXxLqHl5QDKmZHfhHcdik1fjGpnSCMWU",
+            authDomain: "momentum-dcd4c.firebaseapp.com",
+            projectId: "momentum-dcd4c",
+            storageBucket: "momentum-dcd4c.appspot.com", // Corrected storage bucket
+            messagingSenderId: "656981199145",
+            appId: "1:656981199145:web:03449e63beda3c53628f38",
+            measurementId: "G-F6EH3E4S1K"
+        };
 
         // --- Firebase Initialization ---
         const app = initializeApp(firebaseConfig);
@@ -176,7 +236,17 @@
 
         // --- DOM Elements ---
         const DOMElements = {
-            loadingView: document.getElementById('loading-view'),
+            authView: document.getElementById('auth-view'),
+            appView: document.getElementById('app-view'),
+            loginContainer: document.getElementById('login-container'),
+            registerContainer: document.getElementById('register-container'),
+            loginForm: document.getElementById('login-form'),
+            registerForm: document.getElementById('register-form'),
+            showRegisterBtn: document.getElementById('show-register-btn'),
+            showLoginBtn: document.getElementById('show-login-btn'),
+            authError: document.getElementById('auth-error'),
+            logoutBtn: document.getElementById('logout-btn'),
+            
             tasksView: document.getElementById('tasks-view'),
             goalsView: document.getElementById('goals-view'),
             taskList: document.getElementById('task-list'),
@@ -189,18 +259,15 @@
             closeModalBtn: document.getElementById('close-modal-btn'),
             cancelModalBtn: document.getElementById('cancel-modal-btn'),
             addGoalForm: document.getElementById('add-goal-form'),
-            goalTitleInput: document.getElementById('goal-title'),
-            goalDescriptionInput: document.getElementById('goal-description'),
+            
             navTasks: document.getElementById('nav-tasks'),
             navGoals: document.getElementById('nav-goals'),
             mobileNavTasks: document.getElementById('mobile-nav-tasks'),
             mobileNavGoals: document.getElementById('mobile-nav-goals'),
             themeToggle: document.getElementById('theme-toggle'),
-            userIdDisplay: document.getElementById('user-id-display'),
         };
 
-        // --- Render Functions ---
-
+        // --- Render Functions (unchanged from previous version) ---
         const renderTasks = () => {
             const filteredTasks = filterTasks(tasks, currentTaskView);
             DOMElements.taskList.innerHTML = '';
@@ -294,11 +361,11 @@
             `;
         };
         
-        // --- Firestore Logic ---
+        // --- Firestore Logic (adapted for user-specific data) ---
         
-        const getTasksCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/tasks`);
-        const getGoalsCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/goals`);
-        const getMilestonesCollection = (goalId) => collection(db, `/artifacts/${appId}/users/${userId}/goals/${goalId}/milestones`);
+        const getTasksCollection = () => collection(db, `users/${userId}/tasks`);
+        const getGoalsCollection = () => collection(db, `users/${userId}/goals`);
+        const getMilestonesCollection = (goalId) => collection(db, `users/${userId}/goals/${goalId}/milestones`);
 
         const handleAddTask = async (e) => {
             e.preventDefault();
@@ -319,8 +386,8 @@
         
         const handleAddGoal = async (e) => {
             e.preventDefault();
-            const title = DOMElements.goalTitleInput.value.trim();
-            const description = DOMElements.goalDescriptionInput.value.trim();
+            const title = document.getElementById('goal-title').value.trim();
+            const description = document.getElementById('goal-description').value.trim();
             if (title === '') return;
             await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString() });
             DOMElements.addGoalForm.reset();
@@ -335,22 +402,12 @@
         };
         
         const handleAddMilestone = async (goalId, text) => {
-            // First, add the document to Firestore.
             const newDocRef = await addDoc(getMilestonesCollection(goalId), { text, isCompleted: false, createdAt: new Date().toISOString() });
-            
-            // Second, manually update the local `goals` array for an instant UI refresh.
             const goalIndex = goals.findIndex(g => g.id === goalId);
             if (goalIndex !== -1) {
-                const newMilestone = {
-                    id: newDocRef.id,
-                    text: text,
-                    isCompleted: false,
-                    createdAt: new Date().toISOString()
-                };
+                const newMilestone = { id: newDocRef.id, text, isCompleted: false, createdAt: new Date().toISOString() };
                 goals[goalIndex].milestones.push(newMilestone);
                 goals[goalIndex].milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
-                
-                // Finally, re-render the goals list with the new data.
                 renderGoals();
             }
         };
@@ -360,20 +417,14 @@
             const milestone = goal?.milestones.find(m => m.id === milestoneId);
             if (milestone) {
                 const newCompletedState = !milestone.isCompleted;
-                // Update Firestore first.
                 await updateDoc(doc(getMilestonesCollection(goalId), milestoneId), { isCompleted: newCompletedState });
-                
-                // Then, update local state and re-render for instant feedback.
                 milestone.isCompleted = newCompletedState;
                 renderGoals();
             }
         };
         
         const handleDeleteMilestone = async (goalId, milestoneId) => {
-            // Delete from Firestore first.
             await deleteDoc(doc(getMilestonesCollection(goalId), milestoneId));
-            
-            // Then, update local state and re-render.
             const goalIndex = goals.findIndex(g => g.id === goalId);
             if (goalIndex !== -1) {
                 goals[goalIndex].milestones = goals[goalIndex].milestones.filter(m => m.id !== milestoneId);
@@ -405,7 +456,7 @@
         };
 
         const archiveUncompletedTasks = async () => {
-             const q = query(getTasksCollection());
+            const q = query(getTasksCollection());
             const querySnapshot = await getDocs(q);
             const allTasks = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -479,6 +530,7 @@
             DOMElements.closeModalBtn.addEventListener('click', () => toggleModal(false));
             DOMElements.cancelModalBtn.addEventListener('click', () => toggleModal(false));
             DOMElements.themeToggle.addEventListener('click', handleThemeToggle);
+            DOMElements.logoutBtn.addEventListener('click', () => signOut(auth));
             
             [DOMElements.navTasks, DOMElements.mobileNavTasks].forEach(btn => btn.addEventListener('click', () => switchPage('tasks')));
             [DOMElements.navGoals, DOMElements.mobileNavGoals].forEach(btn => btn.addEventListener('click', () => switchPage('goals')));
@@ -523,12 +575,41 @@
                     }
                 }
             });
+
+            // Auth form event listeners
+            DOMElements.showRegisterBtn.addEventListener('click', () => {
+                DOMElements.loginContainer.classList.add('hidden');
+                DOMElements.registerContainer.classList.remove('hidden');
+                DOMElements.authError.textContent = '';
+            });
+            DOMElements.showLoginBtn.addEventListener('click', () => {
+                DOMElements.loginContainer.classList.remove('hidden');
+                DOMElements.registerContainer.classList.add('hidden');
+                DOMElements.authError.textContent = '';
+            });
+
+            DOMElements.loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = DOMElements.loginForm['login-email'].value;
+                const password = DOMElements.loginForm['login-password'].value;
+                signInWithEmailAndPassword(auth, email, password)
+                    .catch(error => DOMElements.authError.textContent = error.message);
+            });
+
+            DOMElements.registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = DOMElements.registerForm['register-email'].value;
+                const password = DOMElements.registerForm['register-password'].value;
+                createUserWithEmailAndPassword(auth, email, password)
+                    .catch(error => DOMElements.authError.textContent = error.message);
+            });
         };
         
         const initApp = async (user) => {
             userId = user.uid;
-            DOMElements.userIdDisplay.textContent = `User ID: ${userId}`;
-            DOMElements.loadingView.classList.add('hidden-view');
+            DOMElements.authView.classList.add('hidden-view');
+            DOMElements.appView.classList.remove('hidden-view');
+            
             switchPage('tasks');
             
             await archiveUncompletedTasks();
@@ -550,10 +631,21 @@
             
             updateTaskViewStyles();
         };
+        
+        const cleanup = () => {
+            tasksUnsubscribe();
+            goalsUnsubscribe();
+            userId = null;
+            tasks = [];
+            goals = [];
+            DOMElements.taskList.innerHTML = '';
+            DOMElements.goalList.innerHTML = '';
+            DOMElements.appView.classList.add('hidden-view');
+            DOMElements.authView.classList.remove('hidden-view');
+        };
 
         // --- App Initialization ---
         window.addEventListener('DOMContentLoaded', () => {
-            // Setup theme
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
@@ -562,17 +654,11 @@
             
             setupEventListeners();
             
-            // Setup auth
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     initApp(user);
                 } else {
-                    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                    const authPromise = initialToken ? signInWithCustomToken(auth, initialToken) : signInAnonymously(auth);
-                    authPromise.catch(err => {
-                        console.error("Auth failed, falling back to anonymous", err);
-                        if (initialToken) return signInAnonymously(auth);
-                    });
+                    cleanup();
                 }
             });
         });

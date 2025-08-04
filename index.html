@@ -253,6 +253,7 @@
         let currentPage = 'tasks';
         let tasksUnsubscribe = () => {};
         let goalsUnsubscribe = () => {};
+        let milestoneUnsubscribes = {};
         let sortableGoals = null;
 
         // --- DOM Elements ---
@@ -309,7 +310,7 @@
                 </div>`;
                 return;
             }
-            const sortedGoals = [...goals].sort((a, b) => a.order - b.order);
+            const sortedGoals = [...goals].sort((a, b) => (a.order || 0) - (b.order || 0));
             sortedGoals.forEach(goal => DOMElements.goalListContainer.innerHTML += createGoalCardHTML(goal));
         };
 
@@ -341,7 +342,7 @@
             const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
             const progress = goal.milestones.length > 0 ? (completedMilestones / goal.milestones.length) * 100 : 0;
             const timestamp = new Date(goal.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-            const milestonesHTML = goal.milestones.map(createMilestoneItemHTML).join('');
+            const milestonesHTML = goal.milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt)).map(createMilestoneItemHTML).join('');
 
             return `
                 <div class="goal-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6" data-goal-id="${goal.id}">
@@ -411,7 +412,6 @@
             const title = document.getElementById('goal-title').value.trim();
             const description = document.getElementById('goal-description').value.trim();
             if (title === '') return;
-            // Add new goal with order set to the end of the list
             const order = goals.length;
             await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString(), order });
             DOMElements.addGoalForm.reset();
@@ -433,8 +433,7 @@
             const goal = goals.find(g => g.id === goalId);
             const milestone = goal?.milestones.find(m => m.id === milestoneId);
             if (milestone) {
-                const newCompletedState = !milestone.isCompleted;
-                await updateDoc(doc(getMilestonesCollection(goalId), milestoneId), { isCompleted: newCompletedState });
+                await updateDoc(doc(getMilestonesCollection(goalId), milestoneId), { isCompleted: !milestone.isCompleted });
             }
         };
         
@@ -511,7 +510,6 @@
             DOMElements.goalsView.classList.toggle('hidden-view', page !== 'goals');
             updateNavStyles();
 
-            // Rerender the view when switching to it
             if (page === 'tasks') {
                 renderTasks();
             } else if (page === 'goals') {
@@ -534,39 +532,26 @@
         
         const updateTaskViewStyles = () => {
             const now = new Date();
-
-            // Today's Date
             const todayMonth = now.toLocaleString('default', { month: 'short' });
             const todayDay = now.getDate();
             const todayLabel = `Today (${todayMonth} ${todayDay})`;
-
-            // Week's Start Date (Monday)
             const dayOfWeek = now.getDay();
-            const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is Sunday
+            const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
             const monday = new Date(new Date().setDate(diff));
             const weekMonth = monday.toLocaleString('default', { month: 'short' });
             const weekDay = monday.getDate();
             const weeklyLabel = `Week of ${weekMonth} ${weekDay}`;
-
-            // Month Name
             const monthlyLabel = now.toLocaleString('default', { month: 'long' });
 
-            const labels = {
-                daily: todayLabel,
-                weekly: weeklyLabel,
-                monthly: monthlyLabel,
-                uncompleted: 'Uncompleted'
-            };
+            const labels = { daily: todayLabel, weekly: weeklyLabel, monthly: monthlyLabel, uncompleted: 'Uncompleted' };
 
             document.querySelectorAll('.task-view-btn').forEach(btn => {
                 const view = btn.dataset.view;
-                btn.innerHTML = labels[view]; // Set the new label
+                btn.innerHTML = labels[view];
                 btn.classList.toggle('border-b-2', view === currentTaskView);
                 btn.classList.toggle('border-blue-500', view === currentTaskView);
                 btn.classList.toggle('text-blue-500', view === currentTaskView);
                 btn.classList.toggle('text-gray-500', view !== currentTaskView);
-                btn.classList.toggle('hover:text-gray-700', view !== currentTaskView);
-                btn.classList.toggle('dark:hover:text-white', view !== currentTaskView);
             });
             DOMElements.newTaskInput.placeholder = `Add a new ${currentTaskView} task...`;
             DOMElements.addTaskForm.classList.toggle('hidden', currentTaskView === 'uncompleted');
@@ -584,13 +569,14 @@
         };
         
         const initSortable = () => {
-            if (sortableGoals) {
-                sortableGoals.destroy();
-            }
+            if (sortableGoals) sortableGoals.destroy();
             sortableGoals = new Sortable(DOMElements.goalListContainer, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
+                scroll: true,
+                scrollSensitivity: 50,
+                scrollSpeed: 10,
                 onEnd: saveGoalOrder,
             });
         };
@@ -648,7 +634,6 @@
                 }
             });
 
-            // Auth form event listeners
             DOMElements.showRegisterBtn.addEventListener('click', () => {
                 DOMElements.loginContainer.classList.add('hidden');
                 DOMElements.registerContainer.classList.remove('hidden');
@@ -691,13 +676,47 @@
                 if (currentPage === 'tasks') renderTasks();
             });
 
-            goalsUnsubscribe = onSnapshot(query(getGoalsCollection()), async (snapshot) => {
-                goals = await Promise.all(snapshot.docs.map(async (goalDoc) => {
-                    const milestonesSnapshot = await getDocs(getMilestonesCollection(goalDoc.id));
-                    const milestones = milestonesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                    milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
-                    return { id: goalDoc.id, ...goalDoc.data(), milestones };
-                }));
+            goalsUnsubscribe = onSnapshot(query(getGoalsCollection()), (snapshot) => {
+                // First, handle goal-level changes
+                const currentGoalIds = goals.map(g => g.id);
+                const newGoalIds = snapshot.docs.map(d => d.id);
+
+                snapshot.docChanges().forEach((change) => {
+                    const goalData = { id: change.doc.id, ...change.doc.data(), milestones: [] };
+                    if (change.type === "added") {
+                        if (!goals.find(g => g.id === goalData.id)) {
+                            goals.push(goalData);
+                            // Set up a new listener for this goal's milestones
+                            const milestonesQuery = query(getMilestonesCollection(goalData.id));
+                            milestoneUnsubscribes[goalData.id] = onSnapshot(milestonesQuery, (milestonesSnapshot) => {
+                                const goalIndex = goals.findIndex(g => g.id === goalData.id);
+                                if (goalIndex > -1) {
+                                    goals[goalIndex].milestones = milestonesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                                    if (currentPage === 'goals') {
+                                        renderGoals();
+                                        initSortable();
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    if (change.type === "modified") {
+                        const index = goals.findIndex(g => g.id === goalData.id);
+                        if (index > -1) {
+                            // Preserve milestones, only update goal data
+                            goals[index] = { ...goals[index], ...change.doc.data() };
+                        }
+                    }
+                    if (change.type === "removed") {
+                        goals = goals.filter(g => g.id !== change.doc.id);
+                        // Clean up milestone listener
+                        if (milestoneUnsubscribes[change.doc.id]) {
+                            milestoneUnsubscribes[change.doc.id]();
+                            delete milestoneUnsubscribes[change.doc.id];
+                        }
+                    }
+                });
+
                 if (currentPage === 'goals') {
                     renderGoals();
                     initSortable();
@@ -710,6 +729,10 @@
         const cleanup = () => {
             tasksUnsubscribe();
             goalsUnsubscribe();
+            // Unsubscribe from all milestone listeners
+            Object.values(milestoneUnsubscribes).forEach(unsub => unsub());
+            milestoneUnsubscribes = {};
+
             userId = null;
             tasks = [];
             goals = [];

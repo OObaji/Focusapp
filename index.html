@@ -6,6 +6,7 @@
     <title>Focal Point</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -56,6 +57,16 @@
         .no-scrollbar {
             -ms-overflow-style: none;  /* IE and Edge */
             scrollbar-width: none;  /* Firefox */
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #c0d8f0;
+        }
+        .sortable-chosen {
+            cursor: grabbing;
+        }
+        .goal-card {
+            cursor: grab;
         }
     </style>
 </head>
@@ -154,10 +165,10 @@
                     <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
                     <div class="mb-6 overflow-hidden">
                         <div id="task-view-buttons" class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
-                            <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">daily</button>
-                            <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">weekly</button>
-                            <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">monthly</button>
-                            <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap">uncompleted</button>
+                            <button data-view="daily" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap"></button>
+                            <button data-view="weekly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap"></button>
+                            <button data-view="monthly" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap"></button>
+                            <button data-view="uncompleted" class="task-view-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap"></button>
                         </div>
                     </div>
                     <form id="add-task-form" class="flex gap-2 mb-6">
@@ -177,7 +188,7 @@
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
                         </button>
                     </div>
-                    <div id="goal-list"></div>
+                    <div id="goal-list-container"></div>
                 </div>
             </div>
         </main>
@@ -216,7 +227,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
@@ -242,6 +253,7 @@
         let currentPage = 'tasks';
         let tasksUnsubscribe = () => {};
         let goalsUnsubscribe = () => {};
+        let sortableGoals = null;
 
         // --- DOM Elements ---
         const DOMElements = {
@@ -259,7 +271,7 @@
             tasksView: document.getElementById('tasks-view'),
             goalsView: document.getElementById('goals-view'),
             taskList: document.getElementById('task-list'),
-            goalList: document.getElementById('goal-list'),
+            goalListContainer: document.getElementById('goal-list-container'),
             addTaskForm: document.getElementById('add-task-form'),
             newTaskInput: document.getElementById('new-task-input'),
             taskViewButtons: document.getElementById('task-view-buttons'),
@@ -276,7 +288,7 @@
             themeToggle: document.getElementById('theme-toggle'),
         };
 
-        // --- Render Functions (unchanged from previous version) ---
+        // --- Render Functions ---
         const renderTasks = () => {
             const filteredTasks = filterTasks(tasks, currentTaskView);
             DOMElements.taskList.innerHTML = '';
@@ -288,16 +300,17 @@
         };
         
         const renderGoals = () => {
-            DOMElements.goalList.innerHTML = '';
+            DOMElements.goalListContainer.innerHTML = '';
             if (goals.length === 0) {
-                DOMElements.goalList.innerHTML = `<div class="text-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                DOMElements.goalListContainer.innerHTML = `<div class="text-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                     <i class="fa-solid fa-bullseye text-5xl mx-auto text-gray-400 dark:text-gray-500"></i>
                     <h3 class="mt-4 text-xl font-semibold text-gray-800 dark:text-white">No Goals Yet</h3>
                     <p class="mt-1 text-gray-500 dark:text-gray-400">Click 'New Goal' to set your ambitions.</p>
                 </div>`;
                 return;
             }
-            goals.forEach(goal => DOMElements.goalList.innerHTML += createGoalCardHTML(goal));
+            const sortedGoals = [...goals].sort((a, b) => a.order - b.order);
+            sortedGoals.forEach(goal => DOMElements.goalListContainer.innerHTML += createGoalCardHTML(goal));
         };
 
         const createTaskItemHTML = (task) => {
@@ -331,7 +344,7 @@
             const milestonesHTML = goal.milestones.map(createMilestoneItemHTML).join('');
 
             return `
-                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6" data-goal-id="${goal.id}">
+                <div class="goal-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6" data-goal-id="${goal.id}">
                     <div class="flex justify-between items-start">
                         <div>
                             <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fa-solid fa-bullseye text-blue-500"></i> ${goal.title}</h3>
@@ -370,7 +383,7 @@
             `;
         };
         
-        // --- Firestore Logic (adapted for user-specific data) ---
+        // --- Firestore Logic ---
         
         const getTasksCollection = () => collection(db, `users/${userId}/tasks`);
         const getGoalsCollection = () => collection(db, `users/${userId}/goals`);
@@ -398,7 +411,9 @@
             const title = document.getElementById('goal-title').value.trim();
             const description = document.getElementById('goal-description').value.trim();
             if (title === '') return;
-            await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString() });
+            // Add new goal with order set to the end of the list
+            const order = goals.length;
+            await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString(), order });
             DOMElements.addGoalForm.reset();
             toggleModal(false);
         };
@@ -411,14 +426,7 @@
         };
         
         const handleAddMilestone = async (goalId, text) => {
-            const newDocRef = await addDoc(getMilestonesCollection(goalId), { text, isCompleted: false, createdAt: new Date().toISOString() });
-            const goalIndex = goals.findIndex(g => g.id === goalId);
-            if (goalIndex !== -1) {
-                const newMilestone = { id: newDocRef.id, text, isCompleted: false, createdAt: new Date().toISOString() };
-                goals[goalIndex].milestones.push(newMilestone);
-                goals[goalIndex].milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
-                renderGoals();
-            }
+            await addDoc(getMilestonesCollection(goalId), { text, isCompleted: false, createdAt: new Date().toISOString() });
         };
         
         const handleToggleMilestone = async (goalId, milestoneId) => {
@@ -427,18 +435,24 @@
             if (milestone) {
                 const newCompletedState = !milestone.isCompleted;
                 await updateDoc(doc(getMilestonesCollection(goalId), milestoneId), { isCompleted: newCompletedState });
-                milestone.isCompleted = newCompletedState;
-                renderGoals();
             }
         };
         
         const handleDeleteMilestone = async (goalId, milestoneId) => {
             await deleteDoc(doc(getMilestonesCollection(goalId), milestoneId));
-            const goalIndex = goals.findIndex(g => g.id === goalId);
-            if (goalIndex !== -1) {
-                goals[goalIndex].milestones = goals[goalIndex].milestones.filter(m => m.id !== milestoneId);
-                renderGoals();
-            }
+        };
+        
+        const saveGoalOrder = async () => {
+            const goalElements = [...DOMElements.goalListContainer.children];
+            const batch = writeBatch(db);
+            goalElements.forEach((el, index) => {
+                const goalId = el.dataset.goalId;
+                if (goalId) {
+                    const goalRef = doc(getGoalsCollection(), goalId);
+                    batch.update(goalRef, { order: index });
+                }
+            });
+            await batch.commit();
         };
 
         // --- Utility & Event Handlers ---
@@ -452,7 +466,7 @@
                 case 'daily': return activeTasks.filter(t => new Date(t.createdAt).toDateString() === now.toDateString());
                 case 'weekly': {
                     const startOfWeek = new Date(now);
-                    startOfWeek.setDate(now.getDate() - now.getDay());
+                    startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Adjust for Sunday
                     startOfWeek.setHours(0, 0, 0, 0);
                     const endOfWeek = new Date(startOfWeek);
                     endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -472,7 +486,7 @@
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)); // Adjust for Sunday
             startOfWeek.setHours(0, 0, 0, 0);
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -496,6 +510,14 @@
             DOMElements.tasksView.classList.toggle('hidden-view', page !== 'tasks');
             DOMElements.goalsView.classList.toggle('hidden-view', page !== 'goals');
             updateNavStyles();
+
+            // Rerender the view when switching to it
+            if (page === 'tasks') {
+                renderTasks();
+            } else if (page === 'goals') {
+                renderGoals();
+                initSortable();
+            }
         };
 
         const updateNavStyles = () => {
@@ -511,11 +533,40 @@
         };
         
         const updateTaskViewStyles = () => {
+            const now = new Date();
+
+            // Today's Date
+            const todayMonth = now.toLocaleString('default', { month: 'short' });
+            const todayDay = now.getDate();
+            const todayLabel = `Today (${todayMonth} ${todayDay})`;
+
+            // Week's Start Date (Monday)
+            const dayOfWeek = now.getDay();
+            const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is Sunday
+            const monday = new Date(new Date().setDate(diff));
+            const weekMonth = monday.toLocaleString('default', { month: 'short' });
+            const weekDay = monday.getDate();
+            const weeklyLabel = `Week of ${weekMonth} ${weekDay}`;
+
+            // Month Name
+            const monthlyLabel = now.toLocaleString('default', { month: 'long' });
+
+            const labels = {
+                daily: todayLabel,
+                weekly: weeklyLabel,
+                monthly: monthlyLabel,
+                uncompleted: 'Uncompleted'
+            };
+
             document.querySelectorAll('.task-view-btn').forEach(btn => {
-                btn.classList.toggle('border-b-2', btn.dataset.view === currentTaskView);
-                btn.classList.toggle('border-blue-500', btn.dataset.view === currentTaskView);
-                btn.classList.toggle('text-blue-500', btn.dataset.view === currentTaskView);
-                btn.classList.toggle('text-gray-500', btn.dataset.view !== currentTaskView);
+                const view = btn.dataset.view;
+                btn.innerHTML = labels[view]; // Set the new label
+                btn.classList.toggle('border-b-2', view === currentTaskView);
+                btn.classList.toggle('border-blue-500', view === currentTaskView);
+                btn.classList.toggle('text-blue-500', view === currentTaskView);
+                btn.classList.toggle('text-gray-500', view !== currentTaskView);
+                btn.classList.toggle('hover:text-gray-700', view !== currentTaskView);
+                btn.classList.toggle('dark:hover:text-white', view !== currentTaskView);
             });
             DOMElements.newTaskInput.placeholder = `Add a new ${currentTaskView} task...`;
             DOMElements.addTaskForm.classList.toggle('hidden', currentTaskView === 'uncompleted');
@@ -532,6 +583,18 @@
             DOMElements.themeToggle.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
         };
         
+        const initSortable = () => {
+            if (sortableGoals) {
+                sortableGoals.destroy();
+            }
+            sortableGoals = new Sortable(DOMElements.goalListContainer, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: saveGoalOrder,
+            });
+        };
+
         const setupEventListeners = () => {
             DOMElements.addTaskForm.addEventListener('submit', handleAddTask);
             DOMElements.addGoalForm.addEventListener('submit', handleAddGoal);
@@ -560,7 +623,7 @@
                 if (action === 'delete') handleDeleteTask(id);
             });
             
-            DOMElements.goalList.addEventListener('click', (e) => {
+            DOMElements.goalListContainer.addEventListener('click', (e) => {
                 const button = e.target.closest('button');
                 if (!button) return;
                 const { action, id } = button.dataset;
@@ -572,7 +635,7 @@
                 if (action === 'delete-milestone') handleDeleteMilestone(goalId, id);
             });
 
-            DOMElements.goalList.addEventListener('submit', (e) => {
+            DOMElements.goalListContainer.addEventListener('submit', (e) => {
                 if (e.target.matches('.add-milestone-form')) {
                     e.preventDefault();
                     const goalId = e.target.closest('[data-goal-id]').dataset.goalId;
@@ -635,7 +698,10 @@
                     milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
                     return { id: goalDoc.id, ...goalDoc.data(), milestones };
                 }));
-                if (currentPage === 'goals') renderGoals();
+                if (currentPage === 'goals') {
+                    renderGoals();
+                    initSortable();
+                }
             });
             
             updateTaskViewStyles();
@@ -648,7 +714,7 @@
             tasks = [];
             goals = [];
             DOMElements.taskList.innerHTML = '';
-            DOMElements.goalList.innerHTML = '';
+            DOMElements.goalListContainer.innerHTML = '';
             DOMElements.appView.classList.add('hidden-view');
             DOMElements.authView.classList.remove('hidden-view');
         };
@@ -674,4 +740,4 @@
 
     </script>
 </body>
-</ht
+</html>

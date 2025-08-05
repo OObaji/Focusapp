@@ -359,12 +359,19 @@
                         <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5"><div class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style="width: ${progress}%"></div></div>
                     </div>
                     <div class="mt-6">
-                        <h4 class="font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2"><i class="fa-solid fa-flag"></i> Milestones</h4>
-                        <div class="milestone-list">${milestonesHTML.length > 0 ? milestonesHTML : `<p class="text-sm text-gray-500 dark:text-gray-400 italic">No milestones yet. Add one below.</p>`}</div>
-                        <form class="add-milestone-form flex gap-2 mt-3">
-                            <input type="text" placeholder="Add a new milestone..." class="new-milestone-input flex-grow p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-sm">
-                            <button type="submit" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"><i class="fa-solid fa-plus"></i></button>
-                        </form>
+                        <div class="flex justify-between items-center cursor-pointer" data-action="toggle-milestones">
+                            <h4 class="font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2"><i class="fa-solid fa-flag"></i> Milestones</h4>
+                            <button class="text-gray-400 hover:text-gray-600 p-1 rounded-full pointer-events-none">
+                                <i class="fa-solid fa-chevron-down transition-transform duration-200"></i>
+                            </button>
+                        </div>
+                        <div class="milestones-content pt-2">
+                            <div class="milestone-list">${milestonesHTML.length > 0 ? milestonesHTML : `<p class="text-sm text-gray-500 dark:text-gray-400 italic">No milestones yet. Add one below.</p>`}</div>
+                            <form class="add-milestone-form flex gap-2 mt-3">
+                                <input type="text" placeholder="Add a new milestone..." class="new-milestone-input flex-grow p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-sm">
+                                <button type="submit" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors"><i class="fa-solid fa-plus"></i></button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             `;
@@ -610,15 +617,27 @@
             });
             
             DOMElements.goalListContainer.addEventListener('click', (e) => {
-                const button = e.target.closest('button');
-                if (!button) return;
-                const { action, id } = button.dataset;
-                const goalCard = e.target.closest('[data-goal-id]');
-                const goalId = goalCard?.dataset.goalId;
+                const target = e.target;
+                const button = target.closest('button');
+                const collapseToggle = target.closest('[data-action="toggle-milestones"]');
 
-                if (action === 'delete-goal') handleDeleteGoal(id);
-                if (action === 'toggle-milestone') handleToggleMilestone(goalId, id);
-                if (action === 'delete-milestone') handleDeleteMilestone(goalId, id);
+                if (button) {
+                    const { action, id } = button.dataset;
+                    const goalCard = button.closest('[data-goal-id]');
+                    const goalId = goalCard?.dataset.goalId;
+
+                    if (action === 'delete-goal') handleDeleteGoal(id);
+                    if (action === 'toggle-milestone') handleToggleMilestone(goalId, id);
+                    if (action === 'delete-milestone') handleDeleteMilestone(goalId, id);
+                }
+
+                if (collapseToggle) {
+                    const goalCard = collapseToggle.closest('.goal-card');
+                    const content = goalCard.querySelector('.milestones-content');
+                    const icon = collapseToggle.querySelector('i.fa-chevron-down');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-180');
+                }
             });
 
             DOMElements.goalListContainer.addEventListener('submit', (e) => {
@@ -677,16 +696,13 @@
             });
 
             goalsUnsubscribe = onSnapshot(query(getGoalsCollection()), (snapshot) => {
-                // First, handle goal-level changes
-                const currentGoalIds = goals.map(g => g.id);
-                const newGoalIds = snapshot.docs.map(d => d.id);
-
                 snapshot.docChanges().forEach((change) => {
-                    const goalData = { id: change.doc.id, ...change.doc.data(), milestones: [] };
+                    const goalData = { id: change.doc.id, ...change.doc.data() };
+                    const index = goals.findIndex(g => g.id === change.doc.id);
+
                     if (change.type === "added") {
-                        if (!goals.find(g => g.id === goalData.id)) {
-                            goals.push(goalData);
-                            // Set up a new listener for this goal's milestones
+                        if (index === -1) {
+                            goals.push({ ...goalData, milestones: [] });
                             const milestonesQuery = query(getMilestonesCollection(goalData.id));
                             milestoneUnsubscribes[goalData.id] = onSnapshot(milestonesQuery, (milestonesSnapshot) => {
                                 const goalIndex = goals.findIndex(g => g.id === goalData.id);
@@ -701,18 +717,17 @@
                         }
                     }
                     if (change.type === "modified") {
-                        const index = goals.findIndex(g => g.id === goalData.id);
                         if (index > -1) {
-                            // Preserve milestones, only update goal data
-                            goals[index] = { ...goals[index], ...change.doc.data() };
+                            goals[index] = { ...goals[index], ...goalData };
                         }
                     }
                     if (change.type === "removed") {
-                        goals = goals.filter(g => g.id !== change.doc.id);
-                        // Clean up milestone listener
-                        if (milestoneUnsubscribes[change.doc.id]) {
-                            milestoneUnsubscribes[change.doc.id]();
-                            delete milestoneUnsubscribes[change.doc.id];
+                        if (index > -1) {
+                            goals.splice(index, 1);
+                            if (milestoneUnsubscribes[change.doc.id]) {
+                                milestoneUnsubscribes[change.doc.id]();
+                                delete milestoneUnsubscribes[change.doc.id];
+                            }
                         }
                     }
                 });
@@ -729,7 +744,6 @@
         const cleanup = () => {
             tasksUnsubscribe();
             goalsUnsubscribe();
-            // Unsubscribe from all milestone listeners
             Object.values(milestoneUnsubscribes).forEach(unsub => unsub());
             milestoneUnsubscribes = {};
 

@@ -159,7 +159,7 @@
 
         <!-- Main Content -->
         <main class="container mx-auto px-4 sm:px-6 py-4">
-            <div class="max-w-4xl mx-auto">
+            <div class="max-w-7xl mx-auto">
                 <!-- Tasks Page -->
                 <div id="tasks-view" class="hidden-view">
                     <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-6">My Tasks</h2>
@@ -188,34 +188,44 @@
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">New Goal</span>
                         </button>
                     </div>
-                    <div id="goal-list-container"></div>
+                    <div id="goal-category-tabs" class="mb-6 overflow-hidden"></div>
+                    <div id="goal-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
                 </div>
             </div>
         </main>
     </div>
     
-    <!-- Modal for adding goals -->
+    <!-- Modal for adding/editing goals -->
     <div id="goal-modal" class="fixed hidden inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 justify-center items-center p-4">
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all duration-300 ease-out scale-95">
             <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Create a New Goal</h3>
+                <h3 id="goal-modal-title" class="text-xl font-bold text-gray-800 dark:text-white">Create a New Goal</h3>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors rounded-full p-1">
                     <i class="fa-solid fa-times"></i>
                 </button>
             </div>
             <div class="p-6">
-                <form id="add-goal-form">
+                <form id="goal-form">
+                    <input type="hidden" id="goal-id-edit">
                     <div class="mb-4">
                         <label for="goal-title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Goal Title</label>
                         <input id="goal-title" type="text" placeholder="e.g., Learn JavaScript" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" required>
                     </div>
-                    <div class="mb-6">
+                    <div class="mb-4">
                         <label for="goal-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
                         <textarea id="goal-description" placeholder="e.g., Build 3 projects to master it" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg" rows="3"></textarea>
                     </div>
+                     <div class="mb-4">
+                        <label for="goal-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category (Optional)</label>
+                        <input id="goal-category" type="text" placeholder="e.g., Work, Personal" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg">
+                    </div>
+                    <div class="mb-6">
+                        <label for="goal-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Date (Optional)</label>
+                        <input id="goal-date" type="date" class="w-full p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg">
+                    </div>
                     <div class="flex justify-end gap-3">
                         <button type="button" id="cancel-modal-btn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Cancel</button>
-                        <button type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">Add Goal</button>
+                        <button id="goal-submit-btn" type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">Add Goal</button>
                     </div>
                 </form>
             </div>
@@ -251,6 +261,7 @@
         let goals = [];
         let currentTaskView = 'daily';
         let currentPage = 'tasks';
+        let currentGoalCategory = 'All';
         let tasksUnsubscribe = () => {};
         let goalsUnsubscribe = () => {};
         let milestoneUnsubscribes = {};
@@ -273,14 +284,17 @@
             goalsView: document.getElementById('goals-view'),
             taskList: document.getElementById('task-list'),
             goalListContainer: document.getElementById('goal-list-container'),
+            goalCategoryTabs: document.getElementById('goal-category-tabs'),
             addTaskForm: document.getElementById('add-task-form'),
             newTaskInput: document.getElementById('new-task-input'),
             taskViewButtons: document.getElementById('task-view-buttons'),
             addGoalBtn: document.getElementById('add-goal-btn'),
             goalModal: document.getElementById('goal-modal'),
+            goalModalTitle: document.getElementById('goal-modal-title'),
             closeModalBtn: document.getElementById('close-modal-btn'),
             cancelModalBtn: document.getElementById('cancel-modal-btn'),
-            addGoalForm: document.getElementById('add-goal-form'),
+            goalForm: document.getElementById('goal-form'),
+            goalSubmitBtn: document.getElementById('goal-submit-btn'),
             
             navTasks: document.getElementById('nav-tasks'),
             navGoals: document.getElementById('nav-goals'),
@@ -301,16 +315,32 @@
         };
         
         const renderGoals = () => {
+            // Render Category Tabs
+            const categories = ['All', ...new Set(goals.map(g => g.category).filter(Boolean))];
+            DOMElements.goalCategoryTabs.innerHTML = `
+                <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+                    ${categories.map(cat => `
+                        <button data-category="${cat}" class="goal-category-btn capitalize px-4 py-2 text-sm font-semibold whitespace-nowrap ${currentGoalCategory === cat ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white'}">
+                            ${cat}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+
+            // Render Goals
+            const filteredGoals = currentGoalCategory === 'All' 
+                ? goals 
+                : goals.filter(g => (g.category || '') === currentGoalCategory);
+
             DOMElements.goalListContainer.innerHTML = '';
-            if (goals.length === 0) {
-                DOMElements.goalListContainer.innerHTML = `<div class="text-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+            if (filteredGoals.length === 0) {
+                 DOMElements.goalListContainer.innerHTML = `<div class="col-span-full text-center py-16 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                     <i class="fa-solid fa-bullseye text-5xl mx-auto text-gray-400 dark:text-gray-500"></i>
-                    <h3 class="mt-4 text-xl font-semibold text-gray-800 dark:text-white">No Goals Yet</h3>
-                    <p class="mt-1 text-gray-500 dark:text-gray-400">Click 'New Goal' to set your ambitions.</p>
+                    <h3 class="mt-4 text-xl font-semibold text-gray-800 dark:text-white">No Goals in this Category</h3>
                 </div>`;
                 return;
             }
-            const sortedGoals = [...goals].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const sortedGoals = [...filteredGoals].sort((a, b) => (a.order || 0) - (b.order || 0));
             sortedGoals.forEach(goal => DOMElements.goalListContainer.innerHTML += createGoalCardHTML(goal));
         };
 
@@ -344,15 +374,35 @@
             const timestamp = new Date(goal.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
             const milestonesHTML = goal.milestones.sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt)).map(createMilestoneItemHTML).join('');
 
+            let targetDateHTML = '';
+            if (goal.targetDate) {
+                const target = new Date(goal.targetDate);
+                const utcTarget = new Date(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const isOverdue = utcTarget < today && progress < 100;
+                const dateColor = isOverdue ? 'text-red-500' : 'text-gray-400 dark:text-gray-500';
+                const formattedDate = utcTarget.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                targetDateHTML = `
+                    <p class="text-xs ${dateColor} mt-2 flex items-center gap-1">
+                        <i class="fa-solid fa-calendar-check"></i> Target: ${formattedDate} ${isOverdue ? '(Overdue)' : ''}
+                    </p>
+                `;
+            }
+
             return `
-                <div class="goal-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 mb-6" data-goal-id="${goal.id}">
+                <div class="goal-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300" data-goal-id="${goal.id}">
                     <div class="flex justify-between items-start">
                         <div>
                             <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2"><i class="fa-solid fa-bullseye text-blue-500"></i> ${goal.title}</h3>
                             <p class="text-gray-600 dark:text-gray-400 mt-1">${goal.description}</p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1"><i class="fa-solid fa-clock text-xs"></i> Goal set on: ${timestamp}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1"><i class="fa-solid fa-clock text-xs"></i> Set: ${timestamp}</p>
+                            ${targetDateHTML}
                         </div>
-                        <button data-action="delete-goal" data-id="${goal.id}" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full"><i class="fa-solid fa-trash-can"></i></button>
+                        <div class="flex items-center">
+                            <button data-action="edit-goal" data-id="${goal.id}" class="text-gray-400 hover:text-blue-500 transition-colors p-1 rounded-full"><i class="fa-solid fa-pencil"></i></button>
+                            <button data-action="delete-goal" data-id="${goal.id}" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
                     </div>
                     <div class="mt-4">
                         <div class="flex justify-between items-center mb-1"><span class="text-sm font-medium text-gray-600 dark:text-gray-300">Progress</span><span class="text-sm font-bold text-blue-500">${Math.round(progress)}%</span></div>
@@ -365,7 +415,7 @@
                                 <i class="fa-solid fa-chevron-down transition-transform duration-200"></i>
                             </button>
                         </div>
-                        <div class="milestones-content pt-2">
+                        <div class="milestones-content pt-2 hidden">
                             <div class="milestone-list">${milestonesHTML.length > 0 ? milestonesHTML : `<p class="text-sm text-gray-500 dark:text-gray-400 italic">No milestones yet. Add one below.</p>`}</div>
                             <form class="add-milestone-form flex gap-2 mt-3">
                                 <input type="text" placeholder="Add a new milestone..." class="new-milestone-input flex-grow p-2 bg-gray-100 dark:bg-gray-700 border-2 border-transparent focus:border-blue-500 focus:ring-0 rounded-lg text-sm">
@@ -414,14 +464,33 @@
             await deleteDoc(doc(getTasksCollection(), id));
         };
         
-        const handleAddGoal = async (e) => {
+        const handleGoalFormSubmit = async (e) => {
             e.preventDefault();
-            const title = document.getElementById('goal-title').value.trim();
-            const description = document.getElementById('goal-description').value.trim();
+            const goalId = DOMElements.goalForm['goal-id-edit'].value;
+            const title = DOMElements.goalForm['goal-title'].value.trim();
+            const description = DOMElements.goalForm['goal-description'].value.trim();
+            const category = DOMElements.goalForm['goal-category'].value.trim() || '';
+            const targetDate = DOMElements.goalForm['goal-date'].value;
+
             if (title === '') return;
-            const order = goals.length;
-            await addDoc(getGoalsCollection(), { title, description, createdAt: new Date().toISOString(), order });
-            DOMElements.addGoalForm.reset();
+
+            const goalData = {
+                title,
+                description,
+                category,
+                targetDate: targetDate || null
+            };
+
+            if (goalId) {
+                // Update existing goal
+                await updateDoc(doc(getGoalsCollection(), goalId), goalData);
+            } else {
+                // Add new goal
+                const order = goals.length;
+                await addDoc(getGoalsCollection(), { ...goalData, createdAt: new Date().toISOString(), order });
+            }
+
+            DOMElements.goalForm.reset();
             toggleModal(false);
         };
         
@@ -564,7 +633,23 @@
             DOMElements.addTaskForm.classList.toggle('hidden', currentTaskView === 'uncompleted');
         };
 
-        const toggleModal = (show) => {
+        const toggleModal = (show, goal = null) => {
+            if (goal) {
+                // Edit mode
+                DOMElements.goalModalTitle.textContent = 'Edit Goal';
+                DOMElements.goalSubmitBtn.textContent = 'Save Changes';
+                DOMElements.goalForm['goal-id-edit'].value = goal.id;
+                DOMElements.goalForm['goal-title'].value = goal.title;
+                DOMElements.goalForm['goal-description'].value = goal.description;
+                DOMElements.goalForm['goal-category'].value = goal.category || '';
+                DOMElements.goalForm['goal-date'].value = goal.targetDate || '';
+            } else {
+                // Add mode
+                DOMElements.goalModalTitle.textContent = 'Create a New Goal';
+                DOMElements.goalSubmitBtn.textContent = 'Add Goal';
+                DOMElements.goalForm.reset();
+                DOMElements.goalForm['goal-id-edit'].value = '';
+            }
             DOMElements.goalModal.classList.toggle('hidden', !show);
             DOMElements.goalModal.classList.toggle('flex', show);
         };
@@ -577,20 +662,23 @@
         
         const initSortable = () => {
             if (sortableGoals) sortableGoals.destroy();
-            sortableGoals = new Sortable(DOMElements.goalListContainer, {
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                chosenClass: 'sortable-chosen',
-                scroll: true,
-                scrollSensitivity: 50,
-                scrollSpeed: 10,
-                onEnd: saveGoalOrder,
-            });
+            // Only allow sorting in the "All" category view
+            if (currentGoalCategory === 'All') {
+                sortableGoals = new Sortable(DOMElements.goalListContainer, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    scroll: true,
+                    scrollSensitivity: 50,
+                    scrollSpeed: 10,
+                    onEnd: saveGoalOrder,
+                });
+            }
         };
 
         const setupEventListeners = () => {
             DOMElements.addTaskForm.addEventListener('submit', handleAddTask);
-            DOMElements.addGoalForm.addEventListener('submit', handleAddGoal);
+            DOMElements.goalForm.addEventListener('submit', handleGoalFormSubmit);
             DOMElements.addGoalBtn.addEventListener('click', () => toggleModal(true));
             DOMElements.closeModalBtn.addEventListener('click', () => toggleModal(false));
             DOMElements.cancelModalBtn.addEventListener('click', () => toggleModal(false));
@@ -627,6 +715,10 @@
                     const goalId = goalCard?.dataset.goalId;
 
                     if (action === 'delete-goal') handleDeleteGoal(id);
+                    if (action === 'edit-goal') {
+                        const goalToEdit = goals.find(g => g.id === id);
+                        if(goalToEdit) toggleModal(true, goalToEdit);
+                    }
                     if (action === 'toggle-milestone') handleToggleMilestone(goalId, id);
                     if (action === 'delete-milestone') handleDeleteMilestone(goalId, id);
                 }
@@ -637,6 +729,14 @@
                     const icon = collapseToggle.querySelector('i.fa-chevron-down');
                     content.classList.toggle('hidden');
                     icon.classList.toggle('rotate-180');
+                }
+            });
+
+            DOMElements.goalCategoryTabs.addEventListener('click', (e) => {
+                if (e.target.matches('.goal-category-btn')) {
+                    currentGoalCategory = e.target.dataset.category;
+                    renderGoals();
+                    initSortable();
                 }
             });
 
